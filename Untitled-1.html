@@ -1,0 +1,2968 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>밥공구 | 빠른 4문항 설문</title>
+  <style>
+    /* === 재료 썸네일 === */
+.thumb{
+  width:32px;
+  height:32px;
+  border-radius:8px;
+  object-fit:cover;
+  border:1px solid var(--border);
+  margin-right:8px;
+}
+
+    :root{
+      --carrot:#FF6F0F; --carrot-weak:#FFF1E8;
+      --bg:#FFFDFC; --card:#ffffff; --text:#1F2937; --muted:#6B7280; --border:#E5E7EB;
+      --radius:16px; --shadow:0 10px 24px rgba(17,24,39,.08);
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,"Noto Sans KR",Apple SD Gothic Neo,Segoe UI,Roboto,sans-serif}
+    .wrap{max-width:880px;margin:0 auto;padding:24px}
+    header{position:sticky;top:0;background:#fff;border-bottom:1px solid var(--border);z-index:20}
+    header .inner{max-width:880px;margin:0 auto;padding:14px 24px;display:flex;gap:12px;align-items:center}
+    .logo{display:flex;gap:10px;align-items:center;font-weight:700}
+    .logo .dot{width:12px;height:12px;background:var(--carrot);border-radius:50%}
+
+    .card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:24px}
+    .progress{height:8px;background:var(--carrot-weak);border-radius:999px;overflow:hidden}
+    .bar{height:100%;width:0;background:var(--carrot);transition:width .35s ease}
+
+    .q-title{font-size:22px;font-weight:800;margin:6px 0 14px}
+    .q-help{color:var(--muted);font-size:14px;margin:-4px 0 14px}
+
+    .options{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px}
+    .opt{border:1px solid var(--border);border-radius:12px;padding:14px;display:flex;gap:10px;align-items:center;cursor:pointer;transition:transform .06s ease,border-color .12s ease,box-shadow .12s ease}
+    .opt:hover{transform:translateY(-1px);box-shadow:0 4px 14px rgba(17,24,39,.06)}
+    .opt input{accent-color:var(--carrot)}
+
+    .inline{display:flex;gap:10px;align-items:center}
+    .hidden{display:none}
+
+    .nav{display:flex;justify-content:space-between;margin-top:18px}
+    .btn{appearance:none;border:1px solid var(--border);background:#fff;border-radius:10px;padding:12px 16px;font-weight:700;cursor:pointer}
+    .btn[disabled]{opacity:.5;cursor:not-allowed}
+    .btn.fill{background:var(--carrot);border-color:var(--carrot);color:#fff}
+
+    .pill{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--border);background:#fff;border-radius:999px;padding:8px 12px}
+
+    textarea, input[type="text"], select, input[type="number"]{
+      width:100%;padding:12px;border:1px solid var(--border);border-radius:10px;outline:none
+    }
+    textarea:focus, input:focus, select:focus{border-color:var(--carrot)}
+
+    .summary pre{background:#0F172A;color:#E2E8F0;border-radius:12px;padding:16px;overflow:auto}
+    .small{font-size:12px;color:var(--muted)}
+
+    /* ====== Cart & Menu Table ====== */
+    .section-title{font-size:20px;font-weight:800;margin:22px 0 10px}
+    .table{width:100%;border-collapse:separate;border-spacing:0 8px}
+    .tr{display:grid;grid-template-columns:2fr 1fr 1fr auto;gap:8px;align-items:center;background:#fff;border:1px solid var(--border);border-radius:12px;padding:10px}
+    .th{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px}
+    .chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border);border-radius:999px;padding:6px 10px;font-size:12px}
+    .icon-btn{border:1px solid var(--border);background:#fff;border-radius:8px;padding:6px 10px;cursor:pointer}
+    .icon-btn:hover{box-shadow:0 2px 8px rgba(17,24,39,.08)}
+    .toolbar{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
+    .muted{color:var(--muted)}
+    
+    /* GPT Integration UI Styles */
+    .loading-indicator {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--carrot);
+      font-weight: 600;
+    }
+    
+    .loading-spinner {
+      width: 16px;
+      height: 16px;
+      border: 2px solid var(--carrot-weak);
+      border-top: 2px solid var(--carrot);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    
+    .status-message {
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 14px;
+      margin-top: 8px;
+      display: inline-block;
+    }
+    
+    .status-success {
+      background: #dcfce7;
+      color: #166534;
+      border: 1px solid #bbf7d0;
+    }
+    
+    .status-error {
+      background: #fef2f2;
+      color: #dc2626;
+      border: 1px solid #fecaca;
+    }
+    
+    .status-warning {
+      background: #fffbeb;
+      color: #d97706;
+      border: 1px solid #fed7aa;
+    }
+    
+    .status-info {
+      background: #eff6ff;
+      color: #2563eb;
+      border: 1px solid #dbeafe;
+    }
+    
+    .menu-source-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    
+    .menu-source-gpt {
+      background: #f0f9ff;
+      color: #0369a1;
+      border: 1px solid #bae6fd;
+    }
+    
+    .menu-source-local {
+      background: #f9fafb;
+      color: #6b7280;
+      border: 1px solid #e5e7eb;
+    }
+    
+    .truncation-notice {
+      background: var(--carrot-weak);
+      color: var(--carrot);
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 13px;
+      margin-top: 8px;
+      border: 1px solid #fed7aa;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="inner">
+      <div class="logo"><span class="dot"></span> 밥공구 설문</div>
+      <div style="flex:1"></div>
+      <div class="pill"><span id="stepLabel">1 / 4</span></div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <div class="card" style="margin-bottom:12px">
+      <div class="progress" aria-hidden="true"><div id="bar" class="bar"></div></div>
+    </div>
+
+    <!-- 슬라이드 컨테이너 -->
+    <section id="slides" class="card">
+      <!-- Q1 인원수 -->
+      <article class="slide" data-id="people">
+        <div class="q-title">1️⃣ 함께 식사할 인원은 몇 명인가요?</div>
+        <div class="q-help">1~4인은 바로 선택, 5인 이상은 정확한 인원을 입력해주세요.</div>
+        <div class="options" role="radiogroup" aria-label="인원 선택">
+          <label class="opt"><input type="radio" name="people" value="1"> 1인가구</label>
+          <label class="opt"><input type="radio" name="people" value="2"> 2인가구</label>
+          <label class="opt"><input type="radio" name="people" value="3"> 3인가구</label>
+          <label class="opt"><input type="radio" name="people" value="4"> 4인가구</label>
+          <label class="opt inline">
+            <input type="radio" name="people" value="5+"> 5인 이상
+          </label>
+        </div>
+        <div id="peopleMore" class="hidden" style="margin-top:12px">
+          <label class="inline" for="peopleExact">
+            정확한 인원: <input id="peopleExact" type="number" min="5" max="20" inputmode="numeric" placeholder="5" style="width:120px;margin-left:8px" /> 명
+          </label>
+          <div class="small">최소 5명, 최대 20명까지 입력할 수 있어요.</div>
+        </div>
+      </article>
+
+      <!-- Q2 며칠치 -->
+      <article class="slide hidden" data-id="days">
+        <div class="q-title">2️⃣ 몇 일 치를 장바구니에 담을까요?</div>
+        <div class="options" role="radiogroup" aria-label="일수 선택">
+          <label class="opt"><input type="radio" name="days" value="1"> 1일치</label>
+          <label class="opt"><input type="radio" name="days" value="2"> 2일치</label>
+          <label class="opt"><input type="radio" name="days" value="3"> 3일치</label>
+          <label class="opt"><input type="radio" name="days" value="4"> 4일치</label>
+          <label class="opt"><input type="radio" name="days" value="5"> 5일치</label>
+          <label class="opt"><input type="radio" name="days" value="6"> 6일치</label>
+          <label class="opt"><input type="radio" name="days" value="7"> 7일치</label>
+        </div>
+      </article>
+
+      <!-- Q3 끼니 스킵 -->
+      <article class="slide hidden" data-id="meals">
+        <div class="q-title">3️⃣ 집에서 안 먹거나 거르시는 끼니가 있다면?</div>
+        <div class="q-help">복수 선택이 가능해요. 없으면 건너뛰셔도 됩니다.</div>
+        <div class="options" role="group" aria-label="끼니 선택">
+          <label class="opt"><input type="checkbox" name="skip" value="아침"> 아침</label>
+          <label class="opt"><input type="checkbox" name="skip" value="점심"> 점심</label>
+          <label class="opt"><input type="checkbox" name="skip" value="저녁"> 저녁</label>
+        </div>
+      </article>
+
+      <!-- Q4 선호 메뉴 -->
+      <article class="slide hidden" data-id="favorites">
+        <div class="q-title">4️⃣ 자주 먹거나 좋아하는 메뉴가 있다면 알려주세요!</div>
+        <textarea id="fav" rows="4" placeholder="예) 김치볶음밥, 제육볶음, 닭가슴살 샐러드"></textarea>
+        <div class="small" style="margin-top:8px">콤마(,)로 구분해 여러 개 입력하셔도 좋아요.</div>
+        <div id="favoriteTruncationNotice" class="truncation-notice hidden">
+          ⚠️ 선호 메뉴가 3개를 초과하여 처음 3개만 GPT API로 전송됩니다.
+        </div>
+      </article>
+
+      <!-- 완료 -->
+      <article class="slide hidden" data-id="finish">
+        <div class="q-title">✅ 입력이 완료되었어요</div>
+        <p class="q-help">요약을 확인하고 "제출하기"를 누르면 메뉴 예시와 장바구니가 생성됩니다.</p>
+        <div class="summary">
+          <div class="pill" style="margin-bottom:12px"><strong>요약</strong></div>
+          <ul id="summary" style="line-height:1.8"></ul>
+          <pre id="jsonBox" aria-label="응답 JSON"></pre>
+          <div class="toolbar">
+            <button id="copyBtn" class="btn">JSON 복사</button>
+            <button id="submitBtn" class="btn fill">제출하기</button>
+            <div id="loadingIndicator" class="loading-indicator hidden">
+              <div class="loading-spinner"></div>
+              <span id="loadingText">처리 중...</span>
+            </div>
+          </div>
+          <div id="statusMessage" class="hidden"></div>
+          <div id="truncationNotice" class="hidden"></div>
+        </div>
+
+        <hr style="border:none;border-top:1px solid var(--border);margin:18px 0"/>
+
+        <div id="resultWrap" class="hidden">
+          <div class="section-title">🍱 추천 메뉴</div>
+          <div id="menusBox" class="card" style="padding:16px"></div>
+
+          <div class="section-title">🧺 장바구니(재료 통합)</div>
+          <div class="toolbar">
+            <input id="cartSearch" type="text" placeholder="재료 검색(예: 대파, 돼지고기)" style="max-width:260px"/>
+            <button id="clearRemovedBtn" class="icon-btn">❌ 제거내역 비우기</button>
+            <button id="restoreAllBtn" class="icon-btn">↩️ 전부 복원</button>
+            <button id="exportJsonBtn" class="icon-btn">💾 JSON 저장</button>
+            <button id="exportCsvBtn" class="icon-btn">📄 CSV 저장</button>
+          </div>
+          <div id="cartBox"></div>
+          <div id="removedBox" class="small muted" style="margin-top:8px"></div>
+        </div>
+      </article>
+
+      <!-- 네비게이션 -->
+      <div class="nav">
+        <button id="prevBtn" class="btn" disabled>이전</button>
+        <button id="nextBtn" class="btn fill">다음</button>
+      </div>
+    </section>
+  </main>
+
+  <!-- 설문 로직 -->
+  <script>
+    // ===== 상태 =====
+    let index = 0; // 0..3 질문 + 마지막 요약(4)
+    const slides = Array.from(document.querySelectorAll('.slide'));
+    const bar = document.getElementById('bar');
+    const stepLabel = document.getElementById('stepLabel');
+    const prevBtn = document.getElementById('prevBtn');
+    const nextBtn = document.getElementById('nextBtn');
+
+    function totalSteps(){ return 4; } // 질문 수
+
+    function slideTo(i){
+      slides.forEach((el,idx)=> el.classList.toggle('hidden', idx!==i));
+      index = i;
+      const step = Math.min(index+1, totalSteps());
+      stepLabel.textContent = `${step} / ${totalSteps()}`;
+      const pct = Math.min((index)/totalSteps()*100, 100);
+      bar.style.width = pct + '%';
+      afterSlide();
+    }
+
+    function afterSlide(){
+      prevBtn.disabled = index===0;
+      nextBtn.textContent = (index===totalSteps()-1) ? '요약 보기' : (index>=totalSteps() ? '완료' : '다음');
+      if(index===totalSteps()){
+        prevBtn.disabled = false;
+        nextBtn.classList.add('hidden');
+      } else {
+        nextBtn.classList.remove('hidden');
+      }
+    }
+
+    // Q1: 5인 이상 선택 시 숫자 입력 노출
+    const peopleRadios = document.querySelectorAll('input[name="people"]');
+    const peopleMore = document.getElementById('peopleMore');
+    const peopleExact = document.getElementById('peopleExact');
+    peopleRadios.forEach(r=>{
+      r.addEventListener('change',()=>{
+        if(r.value==='5+' && r.checked){
+          peopleMore.classList.remove('hidden');
+          peopleExact.focus();
+        } else if(r.checked){
+          peopleMore.classList.add('hidden');
+        }
+      })
+    })
+
+    function getAnswers(){
+      let selected = document.querySelector('input[name="people"]:checked');
+      let people = null;
+      if(selected){
+        if(selected.value==='5+'){
+          const n = Number(peopleExact.value);
+          people = Number.isFinite(n) && n>=5 ? n : null;
+        } else {
+          people = Number(selected.value);
+        }
+      }
+      const daysSel = document.querySelector('input[name="days"]:checked');
+      const days = daysSel ? Number(daysSel.value) : null;
+      const skip = Array.from(document.querySelectorAll('input[name="skip"]:checked')).map(x=>x.value);
+      const favRaw = document.getElementById('fav').value.trim();
+      const favorites = favRaw ? favRaw.split(',').map(s=>s.trim()).filter(Boolean) : [];
+      
+      // Show truncation notice if needed
+      if (favorites.length > 3) {
+        GPTUIManager.showTruncationNotice(favorites.length, 3);
+      } else {
+        GPTUIManager.hideTruncationNotice();
+      }
+      
+      return { people, days, skipMeals: skip, favoriteMenu: favorites };
+    }
+
+    function validateCurrent(){
+      const id = slides[index].dataset.id;
+      const ans = getAnswers();
+      if(id==='people'){
+        if(ans.people==null){ alert('인원을 선택하거나 5인 이상일 경우 정확한 인원을 입력해주세요.'); return false; }
+      }
+      if(id==='days'){
+        if(!ans.days){ alert('일수를 선택해주세요.'); return false; }
+      }
+      return true;
+    }
+
+    function renderSummary(){
+      const ans = getAnswers();
+      const ul = document.getElementById('summary');
+      ul.innerHTML = '';
+      
+      // Basic info
+      const li1 = document.createElement('li');
+      li1.textContent = `인원: ${ans.people ?? '-'}명`;
+      const li2 = document.createElement('li');
+      li2.textContent = `일수: ${ans.days ?? '-'}일치 (총 예상 끼니: ${ans.days? ans.days*3 : '-'}끼)`;
+      const li3 = document.createElement('li');
+      li3.textContent = `거르는 끼니: ${ans.skipMeals.length? ans.skipMeals.join(', ') : '없음'}`;
+      const li4 = document.createElement('li');
+      li4.textContent = `선호 메뉴: ${ans.favoriteMenu.length? ans.favoriteMenu.join(', ') : '없음'}`;
+      
+      // Add constraint calculation summary if we have valid data
+      if (ans.days && typeof MenuConstraintCalculator !== 'undefined') {
+        const constraints = {
+          days: ans.days,
+          skipMeals: ans.skipMeals || [],
+          favoriteMenus: ans.favoriteMenu || []
+        };
+        
+        const summary = MenuConstraintCalculator.getConstraintSummary(constraints);
+        
+        const li5 = document.createElement('li');
+        li5.innerHTML = `<strong>GPT 메뉴 계획:</strong> 저녁 슬롯 ${summary.dinnerSlots}개, 최대 GPT 메뉴 ${summary.maxGPTMenus}개`;
+        
+        if (summary.warnings.length > 0) {
+          const li6 = document.createElement('li');
+          li6.innerHTML = `<span style="color: #f59e0b;">⚠️ ${summary.warnings.join(', ')}</span>`;
+          [li1,li2,li3,li4,li5,li6].forEach(li=>ul.appendChild(li));
+        } else {
+          [li1,li2,li3,li4,li5].forEach(li=>ul.appendChild(li));
+        }
+      } else {
+        [li1,li2,li3,li4].forEach(li=>ul.appendChild(li));
+      }
+      
+      // Update submit button text based on GPT integration potential
+      const hasFavorites = ans?.favoriteMenu && ans.favoriteMenu.length > 0;
+      const skipSet = new Set(ans?.skipMeals || []);
+      const needDinner = !skipSet.has("저녁");
+      GPTUIManager.updateSubmitButtonForGPT(hasFavorites, needDinner);
+      
+      document.getElementById('jsonBox').textContent = JSON.stringify(ans, null, 2);
+    }
+
+    nextBtn.addEventListener('click', ()=>{
+      if(index < totalSteps()){
+        if(!validateCurrent()) return;
+        if(index === totalSteps()-1){
+          renderSummary();
+          slideTo(totalSteps());
+          return;
+        }
+        slideTo(index+1);
+      }
+    });
+
+    prevBtn.addEventListener('click', ()=>{
+      if(index>0){ slideTo(index-1); }
+    });
+
+    document.addEventListener('keydown', (e)=>{
+      if(e.key==='Enter'){
+        const tag = document.activeElement?.tagName?.toLowerCase();
+        if(tag!=='textarea' && tag!=='input'){
+          e.preventDefault();
+          nextBtn.click();
+        }
+      }
+    });
+
+    document.getElementById('copyBtn').addEventListener('click', async ()=>{
+      try{
+        await navigator.clipboard.writeText(document.getElementById('jsonBox').textContent);
+        alert('복사되었습니다.');
+      }catch{ alert('복사에 실패했습니다.'); }
+    });
+
+    // Real-time favorite menu validation
+    const favInput = document.getElementById('fav');
+    if (favInput) {
+      favInput.addEventListener('input', () => {
+        const favRaw = favInput.value.trim();
+        const favorites = favRaw ? favRaw.split(',').map(s=>s.trim()).filter(Boolean) : [];
+        
+        if (favorites.length > 3) {
+          GPTUIManager.showTruncationNotice(favorites.length, 3);
+        } else {
+          GPTUIManager.hideTruncationNotice();
+        }
+      });
+    }
+
+    // 초기 진입
+    slideTo(0);
+  </script>
+
+  <!-- GPT API Integration -->
+  <script>
+    // GPT API Configuration
+    const GPT_CONFIG = {
+      apiUrl: 'https://api.openai.com/v1/chat/completions',
+      model: 'gpt-3.5-turbo',
+      timeout: 15000, // 15 seconds - increased for better reliability
+      maxRetries: 2, // Increased retry attempts
+      maxMenus: 3,
+      // Circuit breaker configuration
+      circuitBreaker: {
+        failureThreshold: 5, // Number of failures before opening circuit
+        resetTimeout: 300000, // 5 minutes before attempting to close circuit
+        monitoringPeriod: 60000 // 1 minute monitoring window
+      },
+      // Rate limiting configuration
+      rateLimit: {
+        maxRequestsPerMinute: 10,
+        requestWindow: 60000 // 1 minute window
+      }
+    };
+
+    // Circuit Breaker for GPT API
+    class GPTCircuitBreaker {
+      constructor(config = GPT_CONFIG.circuitBreaker) {
+        this.failureThreshold = config.failureThreshold;
+        this.resetTimeout = config.resetTimeout;
+        this.monitoringPeriod = config.monitoringPeriod;
+        
+        this.state = 'CLOSED'; // CLOSED, OPEN, HALF_OPEN
+        this.failureCount = 0;
+        this.lastFailureTime = null;
+        this.successCount = 0;
+        
+        // Track failures in a time window
+        this.recentFailures = [];
+      }
+
+      async execute(operation) {
+        if (this.state === 'OPEN') {
+          if (Date.now() - this.lastFailureTime > this.resetTimeout) {
+            this.state = 'HALF_OPEN';
+            this.successCount = 0;
+            console.log('Circuit breaker moving to HALF_OPEN state');
+          } else {
+            throw new APIError('Circuit breaker is OPEN - GPT API temporarily unavailable', 503);
+          }
+        }
+
+        try {
+          const result = await operation();
+          this.onSuccess();
+          return result;
+        } catch (error) {
+          this.onFailure();
+          throw error;
+        }
+      }
+
+      onSuccess() {
+        this.failureCount = 0;
+        this.recentFailures = [];
+        
+        if (this.state === 'HALF_OPEN') {
+          this.successCount++;
+          if (this.successCount >= 2) { // Require 2 successes to close
+            this.state = 'CLOSED';
+            console.log('Circuit breaker CLOSED - GPT API recovered');
+          }
+        }
+      }
+
+      onFailure() {
+        const now = Date.now();
+        this.lastFailureTime = now;
+        this.recentFailures.push(now);
+        
+        // Clean old failures outside monitoring period
+        this.recentFailures = this.recentFailures.filter(
+          time => now - time < this.monitoringPeriod
+        );
+        
+        if (this.recentFailures.length >= this.failureThreshold) {
+          this.state = 'OPEN';
+          console.log('Circuit breaker OPEN - GPT API temporarily disabled');
+        }
+      }
+
+      getState() {
+        return {
+          state: this.state,
+          failureCount: this.recentFailures.length,
+          lastFailureTime: this.lastFailureTime,
+          timeUntilReset: this.state === 'OPEN' 
+            ? Math.max(0, this.resetTimeout - (Date.now() - this.lastFailureTime))
+            : 0
+        };
+      }
+    }
+
+    // Rate Limiter for GPT API
+    class GPTRateLimiter {
+      constructor(config = GPT_CONFIG.rateLimit) {
+        this.maxRequests = config.maxRequestsPerMinute;
+        this.windowMs = config.requestWindow;
+        this.requests = [];
+      }
+
+      async checkLimit() {
+        const now = Date.now();
+        
+        // Clean old requests outside the window
+        this.requests = this.requests.filter(time => now - time < this.windowMs);
+        
+        if (this.requests.length >= this.maxRequests) {
+          const oldestRequest = Math.min(...this.requests);
+          const waitTime = this.windowMs - (now - oldestRequest);
+          
+          throw new APIError(
+            `Rate limit exceeded. Please wait ${Math.ceil(waitTime / 1000)} seconds.`, 
+            429
+          );
+        }
+        
+        this.requests.push(now);
+      }
+
+      getStatus() {
+        const now = Date.now();
+        const recentRequests = this.requests.filter(time => now - time < this.windowMs);
+        
+        return {
+          requestsInWindow: recentRequests.length,
+          maxRequests: this.maxRequests,
+          windowMs: this.windowMs,
+          remainingRequests: Math.max(0, this.maxRequests - recentRequests.length)
+        };
+      }
+    }
+
+    // GPT API Client Class
+    class GPTMenuClient {
+      constructor(apiKey = null) {
+        this.apiKey = apiKey || this.getApiKeyFromStorage();
+        this.requestCount = 0;
+        this.circuitBreaker = new GPTCircuitBreaker();
+        this.rateLimiter = new GPTRateLimiter();
+        this.lastRequestTime = 0;
+      }
+
+      getApiKeyFromStorage() {
+        // In a real implementation, this would be stored securely
+        // For demo purposes, we'll return null and use fallback
+        return localStorage.getItem('gpt_api_key') || null;
+      }
+
+      async generateMenus(favoriteMenus, servings = 2, maxCount = 3) {
+        // Input validation
+        if (!this.apiKey) {
+          throw new APIError('GPT API key not configured', 401);
+        }
+
+        if (!favoriteMenus || !Array.isArray(favoriteMenus) || favoriteMenus.length === 0) {
+          throw new ValidationError('No favorite menus provided or invalid format', favoriteMenus);
+        }
+
+        // Validate servings parameter
+        const validatedServings = this.validateAndNormalizeNumber(servings, 'servings', 1, 20, 2);
+        const validatedMaxCount = this.validateAndNormalizeNumber(maxCount, 'maxCount', 1, GPT_CONFIG.maxMenus, 3);
+
+        // Limit and validate favorite menus
+        const limitedMenus = favoriteMenus
+          .slice(0, validatedMaxCount)
+          .filter(menu => menu && typeof menu === 'string' && menu.trim())
+          .map(menu => menu.trim());
+
+        if (limitedMenus.length === 0) {
+          throw new ValidationError('No valid favorite menus after filtering', favoriteMenus);
+        }
+        
+        try {
+          // Check rate limiting
+          await this.rateLimiter.checkLimit();
+          
+          const request = this.formatRequest(limitedMenus, validatedServings);
+          
+          // Use circuit breaker and retry mechanism for the entire operation
+          const response = await this.circuitBreaker.execute(async () => {
+            return await GPTErrorHandler.withRetry(async () => {
+              return await this.makeApiCall(request);
+            });
+          });
+          
+          const menus = this.parseResponse(response);
+          
+          // Final validation of returned menus
+          if (!menus || menus.length === 0) {
+            throw new ValidationError('No valid menus returned from GPT API');
+          }
+          
+          console.log(`Successfully generated ${menus.length} menus from GPT API`);
+          this.requestCount++;
+          this.lastRequestTime = Date.now();
+          
+          return menus;
+          
+        } catch (error) {
+          console.error('GPT API Error in generateMenus:', error);
+          
+          // Re-throw with additional context if needed
+          if (error instanceof APIError || error instanceof ValidationError || error instanceof NetworkError) {
+            throw error;
+          }
+          
+          // Wrap unexpected errors
+          throw new APIError(`Unexpected error in menu generation: ${error.message}`, 0, error);
+        }
+      }
+
+      formatRequest(favoriteMenus, servings) {
+        const prompt = `당신은 한국 요리 전문가입니다. 다음 선호 메뉴들을 기반으로 ${servings}인분 레시피를 생성해주세요:
+
+선호 메뉴: ${favoriteMenus.join(', ')}
+
+각 메뉴에 대해 다음 형식의 JSON을 반환해주세요:
+{
+  "menus": [
+    {
+      "name": "메뉴명",
+      "servings": ${servings},
+      "cookingTime": 조리시간(분),
+      "ingredients": [
+        {"name": "재료명", "qty": 수량, "unit": "단위"},
+        ...
+      ],
+      "estimatedCost": 예상비용(원)
+    }
+  ]
+}
+
+주의사항:
+- 정확한 JSON 형식으로만 응답
+- 재료는 한국에서 쉽게 구할 수 있는 것들로
+- 수량은 숫자로, 단위는 "g", "ml", "개", "공기" 등 표준 단위 사용
+- 최대 ${GPT_CONFIG.maxMenus}개 메뉴만 생성`;
+
+        return {
+          model: GPT_CONFIG.model,
+          messages: [
+            {
+              role: "system",
+              content: "당신은 한국 요리 전문가입니다. 정확한 JSON 형식으로만 응답하세요."
+            },
+            {
+              role: "user", 
+              content: prompt
+            }
+          ],
+          max_tokens: 2000,
+          temperature: 0.7
+        };
+      }
+
+      async makeApiCall(request) {
+        return await GPTErrorHandler.withTimeout(async (signal) => {
+          try {
+            const response = await fetch(GPT_CONFIG.apiUrl, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${this.apiKey}`,
+                'User-Agent': 'BobGonggu-GPT-Client/1.0'
+              },
+              body: JSON.stringify(request),
+              signal: signal
+            });
+
+            // Handle different HTTP status codes
+            if (!response.ok) {
+              let errorData = {};
+              let errorMessage = 'Unknown error';
+              
+              try {
+                const contentType = response.headers.get('content-type');
+                if (contentType && contentType.includes('application/json')) {
+                  errorData = await response.json();
+                  errorMessage = errorData.error?.message || errorData.message || `HTTP ${response.status}`;
+                } else {
+                  errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+                }
+              } catch (parseError) {
+                console.warn('Failed to parse error response:', parseError);
+                errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+              }
+              
+              throw new APIError(errorMessage, response.status, errorData);
+            }
+
+            // Validate response content type
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+              throw new ValidationError('Invalid response content type', { contentType });
+            }
+
+            const responseData = await response.json();
+            
+            // Basic response structure validation
+            if (!responseData || typeof responseData !== 'object') {
+              throw new ValidationError('Invalid response format: not an object', responseData);
+            }
+
+            return responseData;
+            
+          } catch (error) {
+            // Handle different types of network errors
+            if (error instanceof APIError || error instanceof ValidationError) {
+              throw error;
+            }
+            
+            if (error.name === 'TypeError' && error.message.includes('fetch')) {
+              throw new NetworkError('Network connection failed', error);
+            }
+            
+            if (error.name === 'SyntaxError') {
+              throw new ValidationError('Invalid JSON response', error);
+            }
+            
+            // Generic network error
+            throw new NetworkError(`Network error: ${error.message}`, error);
+          }
+        }, GPT_CONFIG.timeout);
+      }
+
+      parseResponse(apiResponse) {
+        try {
+          // Comprehensive response validation
+          this.validateResponseStructure(apiResponse);
+
+          const content = apiResponse.choices[0].message.content.trim();
+          
+          if (!content) {
+            throw new ValidationError('Empty response content');
+          }
+          
+          // Try to extract JSON from the response with multiple strategies
+          let menuData;
+          try {
+            menuData = this.extractMenuData(content);
+          } catch (extractError) {
+            throw new ValidationError(`Failed to extract menu data: ${extractError.message}`, { content });
+          }
+          
+          // Validate menu data structure
+          this.validateMenuDataStructure(menuData);
+
+          // Validate and normalize each menu
+          const normalizedMenus = [];
+          for (let i = 0; i < menuData.menus.length; i++) {
+            try {
+              const normalizedMenu = this.validateAndNormalizeMenu(menuData.menus[i], i);
+              normalizedMenus.push(normalizedMenu);
+            } catch (menuError) {
+              console.warn(`Skipping invalid menu at index ${i}:`, menuError);
+              // Continue processing other menus instead of failing completely
+            }
+          }
+          
+          if (normalizedMenus.length === 0) {
+            throw new ValidationError('No valid menus found in response', menuData);
+          }
+          
+          return normalizedMenus;
+          
+        } catch (error) {
+          console.error('Response parsing error:', error);
+          
+          if (error instanceof ValidationError) {
+            throw error;
+          }
+          
+          throw new ValidationError(`Failed to parse GPT response: ${error.message}`, apiResponse);
+        }
+      }
+
+      validateResponseStructure(apiResponse) {
+        if (!apiResponse || typeof apiResponse !== 'object') {
+          throw new ValidationError('Response is not an object', apiResponse);
+        }
+        
+        if (!apiResponse.choices || !Array.isArray(apiResponse.choices)) {
+          throw new ValidationError('Response missing choices array', apiResponse);
+        }
+        
+        if (apiResponse.choices.length === 0) {
+          throw new ValidationError('Response choices array is empty', apiResponse);
+        }
+        
+        const choice = apiResponse.choices[0];
+        if (!choice || typeof choice !== 'object') {
+          throw new ValidationError('First choice is not an object', choice);
+        }
+        
+        if (!choice.message || typeof choice.message !== 'object') {
+          throw new ValidationError('Choice missing message object', choice);
+        }
+        
+        if (typeof choice.message.content !== 'string') {
+          throw new ValidationError('Message content is not a string', choice.message);
+        }
+      }
+
+      extractMenuData(content) {
+        // Strategy 1: Try to parse the entire content as JSON
+        try {
+          return JSON.parse(content);
+        } catch (e) {
+          // Continue to next strategy
+        }
+        
+        // Strategy 2: Extract JSON block using regex
+        const jsonMatch = content.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          try {
+            return JSON.parse(jsonMatch[0]);
+          } catch (e) {
+            // Continue to next strategy
+          }
+        }
+        
+        // Strategy 3: Look for JSON between code blocks
+        const codeBlockMatch = content.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/);
+        if (codeBlockMatch) {
+          try {
+            return JSON.parse(codeBlockMatch[1]);
+          } catch (e) {
+            // Continue to next strategy
+          }
+        }
+        
+        // Strategy 4: Try to find and parse multiple JSON-like structures
+        const jsonObjects = content.match(/\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}/g);
+        if (jsonObjects) {
+          for (const jsonStr of jsonObjects) {
+            try {
+              const parsed = JSON.parse(jsonStr);
+              if (parsed.menus && Array.isArray(parsed.menus)) {
+                return parsed;
+              }
+            } catch (e) {
+              // Continue to next object
+            }
+          }
+        }
+        
+        throw new Error('No valid JSON found in response content');
+      }
+
+      validateMenuDataStructure(menuData) {
+        if (!menuData || typeof menuData !== 'object') {
+          throw new ValidationError('Menu data is not an object', menuData);
+        }
+        
+        if (!menuData.menus) {
+          throw new ValidationError('Menu data missing menus property', menuData);
+        }
+        
+        if (!Array.isArray(menuData.menus)) {
+          throw new ValidationError('Menus property is not an array', menuData.menus);
+        }
+        
+        if (menuData.menus.length === 0) {
+          throw new ValidationError('Menus array is empty', menuData);
+        }
+        
+        if (menuData.menus.length > GPT_CONFIG.maxMenus) {
+          console.warn(`Response contains ${menuData.menus.length} menus, limiting to ${GPT_CONFIG.maxMenus}`);
+          menuData.menus = menuData.menus.slice(0, GPT_CONFIG.maxMenus);
+        }
+      }
+
+      validateAndNormalizeMenu(menu, index = 0) {
+        if (!menu || typeof menu !== 'object') {
+          throw new ValidationError(`Menu at index ${index} is not an object`, menu);
+        }
+        
+        // Validate required fields
+        if (!menu.name || typeof menu.name !== 'string' || !menu.name.trim()) {
+          throw new ValidationError(`Menu at index ${index} missing or invalid name`, menu);
+        }
+        
+        if (!menu.ingredients || !Array.isArray(menu.ingredients)) {
+          throw new ValidationError(`Menu at index ${index} missing or invalid ingredients array`, menu);
+        }
+        
+        if (menu.ingredients.length === 0) {
+          throw new ValidationError(`Menu at index ${index} has empty ingredients array`, menu);
+        }
+        
+        // Validate and normalize ingredients
+        const normalizedIngredients = [];
+        for (let i = 0; i < menu.ingredients.length; i++) {
+          try {
+            const ingredient = this.validateAndNormalizeIngredient(menu.ingredients[i], i);
+            normalizedIngredients.push(ingredient);
+          } catch (ingError) {
+            console.warn(`Skipping invalid ingredient at index ${i} in menu "${menu.name}":`, ingError);
+            // Continue with other ingredients
+          }
+        }
+        
+        if (normalizedIngredients.length === 0) {
+          throw new ValidationError(`Menu at index ${index} has no valid ingredients after validation`, menu);
+        }
+        
+        // Normalize other fields with validation
+        const servings = this.validateAndNormalizeNumber(menu.servings, 'servings', 1, 20, 2);
+        const cookingTime = this.validateAndNormalizeNumber(menu.cookingTime, 'cookingTime', 1, 180, 30);
+        const estimatedCost = this.validateAndNormalizeNumber(menu.estimatedCost, 'estimatedCost', 0, 100000, 0);
+
+        return {
+          name: menu.name.trim(),
+          servings: servings,
+          cookingTime: cookingTime,
+          ingredients: normalizedIngredients,
+          estimatedCost: estimatedCost,
+          source: 'gpt'
+        };
+      }
+
+      validateAndNormalizeIngredient(ingredient, index = 0) {
+        if (!ingredient || typeof ingredient !== 'object') {
+          throw new ValidationError(`Ingredient at index ${index} is not an object`, ingredient);
+        }
+        
+        if (!ingredient.name || typeof ingredient.name !== 'string' || !ingredient.name.trim()) {
+          throw new ValidationError(`Ingredient at index ${index} missing or invalid name`, ingredient);
+        }
+        
+        // Validate quantity
+        const qty = this.validateAndNormalizeNumber(ingredient.qty, 'qty', 0.1, 10000, 1);
+        
+        // Normalize unit
+        let unit = '개'; // default unit
+        if (ingredient.unit && typeof ingredient.unit === 'string') {
+          unit = ingredient.unit.trim();
+        }
+        
+        // Validate unit against known units
+        const validUnits = ['g', 'kg', 'ml', 'L', '개', '공기', '장', '마리', '통', '봉', '팩', '단', '뿌리', '알'];
+        if (!validUnits.includes(unit)) {
+          console.warn(`Unknown unit "${unit}" for ingredient "${ingredient.name}", using default "개"`);
+          unit = '개';
+        }
+
+        return {
+          name: ingredient.name.trim(),
+          qty: qty,
+          unit: unit
+        };
+      }
+
+      validateAndNormalizeNumber(value, fieldName, min, max, defaultValue) {
+        if (value === null || value === undefined) {
+          return defaultValue;
+        }
+        
+        const num = Number(value);
+        if (!Number.isFinite(num)) {
+          console.warn(`Invalid ${fieldName} value "${value}", using default ${defaultValue}`);
+          return defaultValue;
+        }
+        
+        if (num < min) {
+          console.warn(`${fieldName} value ${num} below minimum ${min}, using minimum`);
+          return min;
+        }
+        
+        if (num > max) {
+          console.warn(`${fieldName} value ${num} above maximum ${max}, using maximum`);
+          return max;
+        }
+        
+        return num;
+      }
+
+      // Check if GPT API is available and healthy
+      async checkAPIHealth() {
+        try {
+          if (!this.apiKey) {
+            return {
+              available: false,
+              reason: 'API key not configured',
+              canRetry: false
+            };
+          }
+
+          const circuitState = this.circuitBreaker.getState();
+          if (circuitState.state === 'OPEN') {
+            return {
+              available: false,
+              reason: `Circuit breaker is open (${circuitState.failureCount} recent failures)`,
+              canRetry: false,
+              retryAfter: circuitState.timeUntilReset
+            };
+          }
+
+          const rateLimitStatus = this.rateLimiter.getStatus();
+          if (rateLimitStatus.remainingRequests === 0) {
+            return {
+              available: false,
+              reason: 'Rate limit exceeded',
+              canRetry: true,
+              retryAfter: rateLimitStatus.windowMs
+            };
+          }
+
+          return {
+            available: true,
+            circuitState: circuitState.state,
+            remainingRequests: rateLimitStatus.remainingRequests,
+            requestCount: this.requestCount
+          };
+          
+        } catch (error) {
+          return {
+            available: false,
+            reason: `Health check failed: ${error.message}`,
+            canRetry: true
+          };
+        }
+      }
+
+      // Get comprehensive status information
+      getStatus() {
+        const circuitState = this.circuitBreaker.getState();
+        const rateLimitStatus = this.rateLimiter.getStatus();
+        
+        return {
+          apiKey: this.apiKey ? 'configured' : 'not configured',
+          requestCount: this.requestCount,
+          lastRequestTime: this.lastRequestTime,
+          circuitBreaker: circuitState,
+          rateLimit: rateLimitStatus,
+          config: {
+            timeout: GPT_CONFIG.timeout,
+            maxRetries: GPT_CONFIG.maxRetries,
+            maxMenus: GPT_CONFIG.maxMenus
+          }
+        };
+      }
+    }
+
+    // Custom Error Classes
+    class APIError extends Error {
+      constructor(message, status = 0, originalError = null) {
+        super(message);
+        this.name = 'APIError';
+        this.status = status;
+        this.originalError = originalError;
+        this.timestamp = new Date().toISOString();
+      }
+    }
+
+    class ValidationError extends Error {
+      constructor(message, data = null) {
+        super(message);
+        this.name = 'ValidationError';
+        this.data = data;
+        this.timestamp = new Date().toISOString();
+      }
+    }
+
+    class NetworkError extends Error {
+      constructor(message, originalError = null) {
+        super(message);
+        this.name = 'NetworkError';
+        this.originalError = originalError;
+        this.timestamp = new Date().toISOString();
+      }
+    }
+
+    // Comprehensive Error Handler Utilities
+    class GPTErrorHandler {
+      static handle(error, fallbackCallback = null) {
+        console.error('GPT API Error:', error);
+        
+        let userMessage = 'GPT API 오류가 발생했습니다.';
+        let messageType = 'error';
+        let shouldFallback = true;
+        let retryable = false;
+
+        if (error instanceof APIError) {
+          switch (error.status) {
+            case 400:
+              userMessage = 'API 요청 형식이 올바르지 않습니다. 로컬 메뉴를 사용합니다.';
+              messageType = 'warning';
+              shouldFallback = true;
+              retryable = false;
+              break;
+            case 401:
+              userMessage = 'API 키가 유효하지 않습니다. 로컬 메뉴를 사용합니다.';
+              messageType = 'warning';
+              shouldFallback = true;
+              retryable = false;
+              break;
+            case 403:
+              userMessage = 'API 접근이 거부되었습니다. 로컬 메뉴를 사용합니다.';
+              messageType = 'warning';
+              shouldFallback = true;
+              retryable = false;
+              break;
+            case 408:
+              userMessage = 'API 요청 시간이 초과되었습니다. 로컬 메뉴를 사용합니다.';
+              messageType = 'warning';
+              shouldFallback = true;
+              retryable = true;
+              break;
+            case 429:
+              userMessage = 'API 요청 한도를 초과했습니다. 잠시 후 다시 시도하거나 로컬 메뉴를 사용합니다.';
+              messageType = 'warning';
+              shouldFallback = true;
+              retryable = true;
+              break;
+            case 500:
+            case 502:
+            case 503:
+            case 504:
+              userMessage = 'GPT 서비스에 일시적인 문제가 있습니다. 로컬 메뉴를 사용합니다.';
+              messageType = 'warning';
+              shouldFallback = true;
+              retryable = true;
+              break;
+            default:
+              userMessage = `API 오류 (${error.status}): ${error.message}. 로컬 메뉴를 사용합니다.`;
+              messageType = 'warning';
+              shouldFallback = true;
+              retryable = error.status >= 500;
+          }
+        } else if (error instanceof NetworkError) {
+          userMessage = '네트워크 연결에 문제가 있습니다. 로컬 메뉴를 사용합니다.';
+          messageType = 'warning';
+          shouldFallback = true;
+          retryable = true;
+        } else if (error instanceof ValidationError) {
+          userMessage = 'GPT 응답 데이터가 올바르지 않습니다. 로컬 메뉴를 사용합니다.';
+          messageType = 'warning';
+          shouldFallback = true;
+          retryable = false;
+        } else if (error.message.includes('API key not configured')) {
+          userMessage = 'GPT API 키가 설정되지 않았습니다. 로컬 메뉴를 사용합니다.';
+          messageType = 'info';
+          shouldFallback = true;
+          retryable = false;
+        } else if (error.message.includes('No favorite menus')) {
+          userMessage = '선호 메뉴가 입력되지 않았습니다.';
+          messageType = 'info';
+          shouldFallback = true;
+          retryable = false;
+        } else {
+          userMessage = `예상치 못한 오류가 발생했습니다: ${error.message}. 로컬 메뉴를 사용합니다.`;
+          messageType = 'error';
+          shouldFallback = true;
+          retryable = false;
+        }
+
+        // Log detailed error information for debugging
+        this.logError(error, { userMessage, messageType, shouldFallback, retryable });
+
+        // Show user message using UI manager
+        GPTUIManager.showStatusMessage(userMessage, messageType);
+
+        // Execute fallback if available and appropriate
+        if (shouldFallback && fallbackCallback) {
+          setTimeout(() => {
+            GPTUIManager.showStatusMessage('로컬 메뉴 데이터베이스를 사용합니다...', 'info');
+            fallbackCallback();
+          }, 1500);
+        }
+
+        return { userMessage, shouldFallback, retryable };
+      }
+
+      static logError(error, context = {}) {
+        const errorLog = {
+          timestamp: new Date().toISOString(),
+          error: {
+            name: error.name,
+            message: error.message,
+            status: error.status || null,
+            stack: error.stack
+          },
+          context,
+          userAgent: navigator.userAgent,
+          url: window.location.href
+        };
+        
+        console.error('GPT Error Log:', errorLog);
+        
+        // In a production environment, you might want to send this to a logging service
+        // this.sendToLoggingService(errorLog);
+      }
+
+      static async withRetry(operation, maxRetries = GPT_CONFIG.maxRetries) {
+        let lastError;
+        let attempt = 0;
+        
+        while (attempt <= maxRetries) {
+          try {
+            const result = await operation();
+            
+            // Log successful retry if this wasn't the first attempt
+            if (attempt > 0) {
+              console.log(`GPT API call succeeded on attempt ${attempt + 1}`);
+            }
+            
+            return result;
+          } catch (error) {
+            lastError = error;
+            attempt++;
+            
+            // Don't retry on certain errors
+            if (error instanceof APIError && [400, 401, 403].includes(error.status)) {
+              console.log(`Non-retryable error (${error.status}), stopping retry attempts`);
+              throw error;
+            }
+            
+            if (error instanceof ValidationError) {
+              console.log('Validation error, stopping retry attempts');
+              throw error;
+            }
+            
+            if (attempt <= maxRetries) {
+              // Calculate delay with exponential backoff and jitter
+              const baseDelay = 1000 * Math.pow(2, attempt - 1);
+              const jitter = Math.random() * 0.1 * baseDelay; // Add up to 10% jitter
+              const delay = Math.min(baseDelay + jitter, 10000); // Cap at 10 seconds
+              
+              console.log(`GPT API call failed (attempt ${attempt}), retrying in ${Math.round(delay)}ms...`);
+              await new Promise(resolve => setTimeout(resolve, delay));
+            }
+          }
+        }
+        
+        console.error(`GPT API call failed after ${maxRetries + 1} attempts`);
+        throw lastError;
+      }
+
+      static isRetryableError(error) {
+        if (error instanceof APIError) {
+          // Retry on server errors and rate limiting
+          return error.status >= 500 || error.status === 429 || error.status === 408;
+        }
+        
+        if (error instanceof NetworkError) {
+          return true;
+        }
+        
+        // Don't retry validation errors or configuration errors
+        return false;
+      }
+
+      static async withTimeout(operation, timeoutMs = GPT_CONFIG.timeout) {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => {
+          controller.abort();
+        }, timeoutMs);
+
+        try {
+          const result = await operation(controller.signal);
+          clearTimeout(timeoutId);
+          return result;
+        } catch (error) {
+          clearTimeout(timeoutId);
+          
+          if (error.name === 'AbortError') {
+            throw new APIError(`Request timeout after ${timeoutMs}ms`, 408, error);
+          }
+          
+          throw error;
+        }
+      }
+    }
+
+    // Global GPT client instance
+    window.gptClient = new GPTMenuClient();
+    window.GPTErrorHandler = GPTErrorHandler;
+    
+    // UI State Management for GPT Integration
+    class GPTUIManager {
+      static showLoading(message = '처리 중...') {
+        const indicator = document.getElementById('loadingIndicator');
+        const text = document.getElementById('loadingText');
+        const submitBtn = document.getElementById('submitBtn');
+        
+        if (indicator) {
+          indicator.classList.remove('hidden');
+          if (text) text.textContent = message;
+        }
+        
+        if (submitBtn) {
+          submitBtn.disabled = true;
+          submitBtn.textContent = '처리 중...';
+        }
+        
+        this.hideStatusMessage();
+      }
+      
+      static hideLoading() {
+        const indicator = document.getElementById('loadingIndicator');
+        const submitBtn = document.getElementById('submitBtn');
+        
+        if (indicator) {
+          indicator.classList.add('hidden');
+        }
+        
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.textContent = '제출하기';
+        }
+      }
+      
+      static showStatusMessage(message, type = 'info') {
+        const statusEl = document.getElementById('statusMessage');
+        if (!statusEl) return;
+        
+        statusEl.textContent = message;
+        statusEl.className = `status-message status-${type}`;
+        statusEl.classList.remove('hidden');
+        
+        // Auto-hide success messages after 5 seconds
+        if (type === 'success') {
+          setTimeout(() => {
+            this.hideStatusMessage();
+          }, 5000);
+        }
+      }
+      
+      static hideStatusMessage() {
+        const statusEl = document.getElementById('statusMessage');
+        if (statusEl) {
+          statusEl.classList.add('hidden');
+        }
+      }
+      
+      static showTruncationNotice(originalCount, limitCount) {
+        const noticeEl = document.getElementById('favoriteTruncationNotice');
+        if (!noticeEl) return;
+        
+        if (originalCount > limitCount) {
+          noticeEl.textContent = `⚠️ 선호 메뉴가 ${originalCount}개 입력되었지만, GPT API 제한으로 처음 ${limitCount}개만 사용됩니다.`;
+          noticeEl.classList.remove('hidden');
+        } else {
+          noticeEl.classList.add('hidden');
+        }
+      }
+      
+      static hideTruncationNotice() {
+        const noticeEl = document.getElementById('favoriteTruncationNotice');
+        if (noticeEl) {
+          noticeEl.classList.add('hidden');
+        }
+      }
+      
+      static updateSubmitButtonForGPT(hasFavorites, needDinner) {
+        const submitBtn = document.getElementById('submitBtn');
+        if (!submitBtn) return;
+        
+        if (hasFavorites && needDinner) {
+          submitBtn.innerHTML = '🤖 GPT 메뉴 생성하기';
+        } else {
+          submitBtn.innerHTML = '제출하기';
+        }
+      }
+    }
+    
+    // Graceful Degradation Manager
+    class GPTDegradationManager {
+      static async attemptGPTWithFallback(operation, fallbackOperation) {
+        try {
+          // Check API health before attempting
+          const healthCheck = await window.gptClient.checkAPIHealth();
+          
+          if (!healthCheck.available) {
+            console.log('GPT API not available:', healthCheck.reason);
+            GPTUIManager.showStatusMessage(
+              `GPT API 사용 불가: ${healthCheck.reason}. 로컬 메뉴를 사용합니다.`, 
+              'info'
+            );
+            return await fallbackOperation();
+          }
+
+          // Attempt GPT operation
+          console.log('Attempting GPT operation...');
+          const result = await operation();
+          
+          // Success - show positive feedback
+          GPTUIManager.showStatusMessage('GPT 메뉴 생성 성공!', 'success');
+          return result;
+          
+        } catch (error) {
+          console.warn('GPT operation failed, using fallback:', error);
+          
+          // Handle the error and show appropriate message
+          const errorResult = GPTErrorHandler.handle(error);
+          
+          // Always use fallback when GPT fails
+          const fallbackResult = await fallbackOperation();
+          
+          // Add metadata to indicate fallback was used
+          if (Array.isArray(fallbackResult)) {
+            fallbackResult.forEach(item => {
+              if (item && typeof item === 'object') {
+                item.fallbackUsed = true;
+                item.originalError = error.message;
+              }
+            });
+          }
+          
+          return fallbackResult;
+        }
+      }
+
+      static getSystemStatus() {
+        const gptStatus = window.gptClient.getStatus();
+        
+        return {
+          gpt: gptStatus,
+          fallbackAvailable: true, // Local database is always available
+          recommendedAction: this.getRecommendedAction(gptStatus),
+          timestamp: new Date().toISOString()
+        };
+      }
+
+      static getRecommendedAction(gptStatus) {
+        if (gptStatus.apiKey === 'not configured') {
+          return 'Configure GPT API key to enable AI menu generation';
+        }
+        
+        if (gptStatus.circuitBreaker.state === 'OPEN') {
+          const waitTime = Math.ceil(gptStatus.circuitBreaker.timeUntilReset / 1000 / 60);
+          return `GPT API temporarily disabled. Will retry in ${waitTime} minutes.`;
+        }
+        
+        if (gptStatus.rateLimit.remainingRequests === 0) {
+          return 'Rate limit reached. Please wait before making more requests.';
+        }
+        
+        return 'GPT API is available and ready to use';
+      }
+    }
+
+    // Enhanced UI Manager with detailed status
+    GPTUIManager.showDetailedStatus = function(status) {
+      const statusEl = document.getElementById('statusMessage');
+      if (!statusEl) return;
+      
+      let message = '';
+      let type = 'info';
+      
+      if (status.gpt.circuitBreaker.state === 'OPEN') {
+        message = `🔴 GPT API 일시 중단 (${status.gpt.circuitBreaker.failureCount}회 실패)`;
+        type = 'error';
+      } else if (status.gpt.rateLimit.remainingRequests === 0) {
+        message = '⏳ API 요청 한도 도달, 잠시 후 다시 시도해주세요';
+        type = 'warning';
+      } else if (status.gpt.apiKey === 'not configured') {
+        message = '⚙️ GPT API 키가 설정되지 않음, 로컬 메뉴 사용';
+        type = 'info';
+      } else {
+        message = `✅ GPT API 사용 가능 (남은 요청: ${status.gpt.rateLimit.remainingRequests})`;
+        type = 'success';
+      }
+      
+      this.showStatusMessage(message, type);
+    };
+
+    // Debug and monitoring utilities
+    window.GPTDebug = {
+      getSystemStatus: () => GPTDegradationManager.getSystemStatus(),
+      
+      getErrorStats: () => {
+        const status = window.gptClient.getStatus();
+        return {
+          circuitBreakerState: status.circuitBreaker.state,
+          recentFailures: status.circuitBreaker.failureCount,
+          rateLimitStatus: status.rateLimit,
+          totalRequests: status.requestCount,
+          lastRequest: status.lastRequestTime ? new Date(status.lastRequestTime).toLocaleString() : 'Never'
+        };
+      },
+      
+      testErrorHandling: async () => {
+        console.log('Testing error handling...');
+        try {
+          // This should trigger various error conditions
+          await window.gptClient.generateMenus(['테스트 메뉴'], 2, 1);
+        } catch (error) {
+          console.log('Expected error caught:', error);
+          return GPTErrorHandler.handle(error);
+        }
+      },
+      
+      resetCircuitBreaker: () => {
+        window.gptClient.circuitBreaker = new GPTCircuitBreaker();
+        console.log('Circuit breaker reset');
+      },
+      
+      showStatusPanel: () => {
+        const status = GPTDegradationManager.getSystemStatus();
+        console.log('=== GPT System Status ===');
+        console.log('API Key:', status.gpt.apiKey);
+        console.log('Circuit Breaker:', status.gpt.circuitBreaker.state);
+        console.log('Rate Limit:', `${status.gpt.rateLimit.remainingRequests}/${status.gpt.rateLimit.maxRequests}`);
+        console.log('Total Requests:', status.gpt.requestCount);
+        console.log('Recommended Action:', status.recommendedAction);
+        console.log('========================');
+        return status;
+      }
+    };
+
+    // Make managers globally available
+    window.GPTUIManager = GPTUIManager;
+    window.GPTDegradationManager = GPTDegradationManager;
+    
+    // Make MenuConstraintCalculator globally available for testing
+    window.MenuConstraintCalculator = MenuConstraintCalculator;
+    
+    // Test function for constraint calculation (for development/debugging)
+    window.testConstraintCalculation = function() {
+      console.log('=== Menu Constraint Calculator Tests ===');
+      
+      // Test 1: Basic dinner slot calculation
+      console.log('Test 1: Basic dinner slot calculation');
+      console.log('3 days, no skipped meals:', MenuConstraintCalculator.calculateDinnerSlots(3, [])); // Expected: 3
+      console.log('3 days, skip dinner:', MenuConstraintCalculator.calculateDinnerSlots(3, ['저녁'])); // Expected: 0
+      console.log('5 days, skip breakfast:', MenuConstraintCalculator.calculateDinnerSlots(5, ['아침'])); // Expected: 5
+      
+      // Test 2: Menu limit determination
+      console.log('\nTest 2: Menu limit determination');
+      console.log('5 favorites, 3 slots:', MenuConstraintCalculator.determineMenuLimit(5, 3)); // Expected: 3
+      console.log('2 favorites, 5 slots:', MenuConstraintCalculator.determineMenuLimit(2, 5)); // Expected: 2
+      console.log('4 favorites, 7 slots:', MenuConstraintCalculator.determineMenuLimit(4, 7)); // Expected: 3 (API limit)
+      
+      // Test 3: Full validation
+      console.log('\nTest 3: Full validation');
+      const testConstraints = {
+        days: 3,
+        skipMeals: [],
+        favoriteMenus: ['김치볶음밥', '제육볶음', '닭가슴살샐러드', '불고기', '된장찌개']
+      };
+      const validation = MenuConstraintCalculator.validateMenuConstraints(testConstraints);
+      console.log('Validation result:', validation);
+      
+      // Test 4: Constraint summary
+      console.log('\nTest 4: Constraint summary');
+      const summary = MenuConstraintCalculator.getConstraintSummary(testConstraints);
+      console.log('Summary:', summary);
+      
+      console.log('=== Tests Complete ===');
+      return { validation, summary };
+    };
+
+    // Test function for enhanced simulateBackend (for development/debugging)
+    window.testSimulateBackend = async function() {
+      console.log('=== Testing Enhanced simulateBackend ===');
+      
+      // Test 1: Basic functionality without favorites
+      console.log('Test 1: Basic functionality without favorites');
+      const basicAns = {
+        days: 3,
+        people: 2,
+        skipMeals: [],
+        favoriteMenu: []
+      };
+      const basicMenus = await simulateBackend(basicAns);
+      console.log('Basic menus count:', basicMenus.length);
+      console.log('All menus have local source:', basicMenus.every(m => m.source === 'local'));
+      
+      // Test 2: With favorite menus (will attempt GPT integration)
+      console.log('\nTest 2: With favorite menus');
+      const favAns = {
+        days: 3,
+        people: 2,
+        skipMeals: [],
+        favoriteMenu: ['김치볶음밥', '제육볶음']
+      };
+      const favMenus = await simulateBackend(favAns);
+      console.log('Favorite menus count:', favMenus.length);
+      console.log('Menu sources:', favMenus.map(m => m.source));
+      
+      // Test 3: Skip dinner (should not use GPT)
+      console.log('\nTest 3: Skip dinner');
+      const skipDinnerAns = {
+        days: 3,
+        people: 2,
+        skipMeals: ['저녁'],
+        favoriteMenu: ['김치볶음밥', '제육볶음']
+      };
+      const skipDinnerMenus = await simulateBackend(skipDinnerAns);
+      console.log('Skip dinner menus count:', skipDinnerMenus.length);
+      console.log('No dinner menus:', !skipDinnerMenus.some(m => m.title.includes('저녁')));
+      
+      console.log('=== simulateBackend Tests Complete ===');
+    };
+  </script>
+
+  <!-- 메뉴 DB (내장) -->
+  <script>
+    const MENU_DB = {
+      breakfast: [
+        { id:"fried-egg-set", name:"계란후라이 정식", time:10,
+          ingredients:[{name:"밥",qty:1,unit:"공기"},{name:"계란",qty:2,unit:"개"},{name:"김치",qty:80,unit:"g"}] },
+        { id:"kimchi-fried-rice", name:"김치볶음밥", time:15,
+          ingredients:[{name:"밥",qty:1,unit:"공기"},{name:"김치",qty:120,unit:"g"},{name:"대파",qty:20,unit:"g"},{name:"계란",qty:1,unit:"개"}] },
+        { id:"spinach-soup", name:"시금치국", time:10,
+          ingredients:[{name:"시금치",qty:100,unit:"g"},{name:"대파",qty:10,unit:"g"},{name:"두부",qty:100,unit:"g"}] },
+        { id:"cabbage-egg-toast", name:"양배추에그토스트", time:8,
+          ingredients:[{name:"식빵",qty:2,unit:"장"},{name:"계란",qty:1,unit:"개"},{name:"양배추",qty:50,unit:"g"},{name:"햄",qty:1,unit:"장"}] },
+        { id:"kabocha-porridge", name:"단호박죽", time:15,
+          ingredients:[{name:"단호박",qty:180,unit:"g"},{name:"찹쌀가루",qty:20,unit:"g"}] },
+        { id:"oatmeal-bowl", name:"오트밀볼", time:5,
+          ingredients:[{name:"오트밀",qty:50,unit:"g"},{name:"우유",qty:200,unit:"ml"},{name:"바나나",qty:0.5,unit:"개"}] },
+        { id:"tofu-pan", name:"두부부침", time:10,
+          ingredients:[{name:"두부",qty:180,unit:"g"},{name:"쪽파",qty:10,unit:"g"}] },
+      ],
+      lunch: [
+        { id:"kimchi-jjigae", name:"김치찌개", time:20,
+          ingredients:[
+          {name:"김치",qty:150,unit:"g"},
+          {name:"돼지고기 앞다리살",qty:100,unit:"g"},     // ★ 변경
+          {name:"두부",qty:100,unit:"g"},
+          {name:"대파",qty:20,unit:"g"}
+        ] },
+        { id:"jeyuk-bokkeum", name:"제육볶음", time:15,
+          ingredients:[
+            {name:"돼지고기 앞다리살",qty:150,unit:"g"},      // ★ 변경(제육은 앞다리살/목살이 일반적 → 앞다리살로 통일)
+            {name:"양파",qty:50,unit:"g"},
+            {name:"대파",qty:10,unit:"g"}
+          ] },
+        { id:"doenjang-jjigae", name:"된장찌개", time:15,
+          ingredients:[
+            {name:"두부",qty:120,unit:"g"},
+            {name:"애호박",qty:80,unit:"g"},
+            {name:"감자",qty:80,unit:"g"},
+            {name:"대파",qty:10,unit:"g"}
+          ] },
+        { id:"dakbokkeum-tang", name:"닭볶음탕(간단)", time:30,
+          ingredients:[
+            {name:"닭다리살(볶음탕용 절단)",qty:200,unit:"g"},     // ★ 변경
+            {name:"감자",qty:100,unit:"g"},
+            {name:"양파",qty:50,unit:"g"},
+            {name:"당근",qty:40,unit:"g"}
+          ] },
+        { id:"bibimbap", name:"비빔밥", time:15,
+          ingredients:[
+            {name:"밥",qty:1,unit:"공기"},
+            {name:"시금치",qty:80,unit:"g"},
+            {name:"고사리",qty:40,unit:"g"},
+            {name:"계란",qty:1,unit:"개"}
+          ] },
+        { id:"naengmyeon", name:"냉면", time:10,
+          ingredients:[
+            {name:"냉면사리",qty:150,unit:"g"},
+            {name:"오이",qty:40,unit:"g"},
+            {name:"삶은계란",qty:0.5,unit:"개"}
+          ] },
+        { id:"pork-cutlet", name:"돈까스(간단)", time:20,
+          ingredients:[
+            {name:"돼지고기 등심",qty:120,unit:"g"},          // ★ 그대로(이미 부위 명시)
+            {name:"빵가루",qty:30,unit:"g"},
+            {name:"양배추",qty:50,unit:"g"}
+          ] },
+      ],
+      dinner: [
+        { id:"bulgogi", name:"불고기", time:20,
+          ingredients:[
+            {name:"소고기 불고기용",qty:150,unit:"g"},        // ★ 변경
+            {name:"양파",qty:40,unit:"g"},
+            {name:"당근",qty:30,unit:"g"},
+            {name:"대파",qty:10,unit:"g"}
+          ] },
+        { id:"grilled-mackerel", name:"고등어구이", time:15,
+          ingredients:[
+            {name:"고등어(손질)",qty:150,unit:"g"},
+            {name:"무",qty:80,unit:"g"}
+          ] },
+        { id:"chicken-salad", name:"닭가슴살샐러드", time:10,
+          ingredients:[
+            {name:"닭가슴살",qty:120,unit:"g"},
+            {name:"양상추",qty:60,unit:"g"},
+            {name:"방울토마토",qty:80,unit:"g"}
+          ] },
+        { id:"evening-kimchi-fried-rice", name:"김치볶음밥(저녁)", time:15,
+          ingredients:[
+            {name:"밥",qty:1,unit:"공기"},
+            {name:"김치",qty:100,unit:"g"},
+            {name:"대파",qty:20,unit:"g"},
+            {name:"계란",qty:1,unit:"개"}
+          ] },
+        { id:"sundubu-jjigae", name:"순두부찌개", time:20,
+          ingredients:[
+            {name:"순두부",qty:200,unit:"g"},
+            {name:"돼지고기 앞다리살",qty:80,unit:"g"},       // ★ 변경
+            {name:"대파",qty:10,unit:"g"}
+          ] },
+        { id:"ojingeo-bokkeum", name:"오징어볶음", time:15,
+          ingredients:[
+            {name:"오징어",qty:150,unit:"g"},
+            {name:"양배추",qty:50,unit:"g"},
+            {name:"양파",qty:40,unit:"g"}
+          ] },
+        { id:"tofu-steak", name:"두부스테이크", time:15,
+          ingredients:[
+            {name:"두부",qty:180,unit:"g"},
+            {name:"양파",qty:40,unit:"g"},
+            {name:"당근",qty:30,unit:"g"}
+          ] },
+      ],
+    };
+  </script>
+
+  <!-- 장바구니 + 메뉴 생성 -->
+  <script>
+    // ====== 메뉴 & 장바구니 로직 ======
+    const state = { menus: [], cart: [], removed: [] };
+    const keyOf = (i)=> (i.name + '__' + (i.unit||''));
+// 🧩 이름 정규화 매핑표 (MENU_DB ↔ UNIT_MAP 일치용)
+//  - MENU_DB의 재료명 중 판매단위 UNIT_MAP 키와 다른 것들을 모두 매핑
+//  - 이 매핑은 mergeCartFromMenus 위쪽에 넣어야 합니다.
+const NAME_ALIAS = {
+  // === 공통 곡류·밥류 ===
+  "쌀": "쌀",
+  "밥": "밥",
+  "식빵": "식빵", // UNIT_MAP엔 없지만 그대로 표시
+  "냉면사리": "냉면사리",
+  "당면": "당면",
+  "국수": "국수",
+
+  // === 계란류 ===
+  "계란": "계란",
+  "삶은계란": "계란",
+
+  // === 두부류 ===
+  "두부": "두부",
+  "순두부": "순두부",
+
+  // === 채소류 ===
+  "대파": "대파",
+  "쪽파": "쪽파",
+  "양파": "양파",
+  "감자": "감자",
+  "당근": "당근",
+  "무": "무",
+  "시금치": "시금치",
+  "애호박": "애호박",
+  "양배추": "양배추",
+  "양상추": "양상추",
+  "양상추(샐러드용)": "양상추",
+  "오이": "오이",
+  "고사리": "고사리", // UNIT_MAP 없음
+  "단호박": "단호박", // UNIT_MAP 없음
+  "콩나물": "콩나물",
+  "숙주나물": "숙주나물",
+  "숙주": "숙주나물",
+  "청경채": "청경채",
+  "깻잎": "깻잎",
+  "고추": "고추",
+  "풋고추": "고추",
+  "청양고추": "청양고추",
+  "홍고추": "고추",
+  "마늘": "마늘",
+  "생강": "생강",
+  "배추": "배추",
+
+  // === 버섯류 ===
+  "느타리버섯": "느타리버섯",
+  "느타리": "느타리버섯",
+  "새송이버섯": "새송이버섯",
+  "새송이": "새송이버섯",
+  "양송이버섯": "양송이버섯",
+  "양송이": "양송이버섯",
+  "표고버섯": "표고버섯",
+  "표고": "표고버섯",
+  "팽이버섯": "팽이버섯",
+  "팽이": "팽이버섯",
+
+  // === 과일류 ===
+  "바나나": "바나나",
+  "방울토마토": "방울토마토",
+  "토마토": "방울토마토",
+
+  // === 육류 ===
+  "돼지고기": "돼지고기",
+  "돼지고기 등심": "돼지고기 등심",
+  "돼지고기 앞다리": "돼지고기",
+  "돼지고기 앞다리살": "돼지고기",
+  "돼지고기 삼겹살": "삼겹살",
+  "삼겹살": "삼겹살",
+  "소고기": "소고기",
+  "소고기 불고기용": "소고기",
+  "닭": "닭",
+  "닭고기": "닭",
+  "닭가슴살": "닭가슴살",
+  "닭다리살": "닭다리살",
+  "닭다리살(볶음탕용 절단)": "닭다리살",
+
+  // === 수산물 ===
+  "고등어": "고등어(손질)",
+  "고등어(손질)": "고등어(손질)",
+  "오징어": "오징어",
+
+  // === 양념·가공식품 ===
+  "햄": "햄",
+  "빵가루": "빵가루",
+  "찹쌀가루": "찹쌀가루",
+  "오트밀": "오트밀",
+  "우유": "우유",
+  "김치": "김치",
+  "배추김치": "김치",
+  "간장": "간장",
+  "고춧가루": "고춧가루",
+  "된장": "된장",
+  "고추장": "고추장",
+  "쌈장": "쌈장",
+  "식용유": "식용유",
+  "참기름": "참기름",
+  "설탕": "설탕",
+  "소금": "소금",
+  "후추": "후추",
+  "다진마늘": "다진마늘",
+  "맛술": "맛술",
+  "식초": "식초",
+
+  // === 기타 ===
+  "냉면": "냉면사리",
+  "순살닭": "닭가슴살",
+  "순살닭가슴살": "닭가슴살",
+  "두부스테이크": "두부",
+  "단호박죽": "단호박",
+  "단호박": "단호박",
+  "비빔밥": "밥",
+  "김치볶음밥": "밥",
+  "김치볶음밥(저녁)": "밥",
+  "식빵": "식빵",
+  "고사리": "고사리", // UNIT_MAP 없음
+};
+// 통화 포맷터
+const KRW = new Intl.NumberFormat("ko-KR",{ style:"currency", currency:"KRW" });
+
+// 메뉴명 → UNIT_MAP 키로 해석 + 스펙 반환
+function getSpecWithAlias(rawName){
+  const key = toUnitMapKey(rawName);
+  return { key, spec: (window.UNIT_MAP||{})[key] };
+}
+
+// 메뉴 단위 → 판매기준 단위로 보정 (예: 밥 '공기' → count '개')
+function normalizeUnitFor(name, unit){
+  const key = toUnitMapKey(name);
+  
+  // 밥 관련
+  if(key==="밥" && unit==="공기") return "개";
+  
+  // 무게 단위 정규화
+  if(unit==="kg") return "g";  // kg를 g로 변환
+  if(unit==="그램") return "g";
+  
+  // 부피 단위 정규화
+  if(unit==="L" || unit==="리터") return "ml";
+  if(unit==="cc") return "ml";
+  if(unit==="큰술") return "ml";  // 1큰술 = 약 15ml로 계산 필요시
+  if(unit==="작은술" || unit==="티스푼") return "ml";  // 1작은술 = 약 5ml
+  
+  // 개수 단위 정규화
+  if(unit==="개입" || unit==="입" || unit==="ea") return "개";
+  if(unit==="마리") return "개";
+  if(unit==="줌") return "개";  // 줌은 개수로 처리
+  if(unit==="장") return "개";
+  if(unit==="조각") return "개";
+  if(unit==="통") return "개";
+  if(unit==="뿌리") return "개";
+  if(unit==="알") return "개";
+  
+  return unit || "";
+}
+
+// 행 소계 계산 (packCeil 로 올림 후 가격 곱)
+function calcItemPrice(rawName, unit, baseQty){
+  const { key, spec } = getSpecWithAlias(rawName);
+  if(!spec) return { ok:false, reason:"NO_SPEC" };
+
+  const normUnit = normalizeUnitFor(rawName, unit);
+  const unitOk =
+    (spec.base==="weight" && normUnit==="g") ||
+    (spec.base==="volume" && normUnit==="ml") ||
+    (spec.base==="count"  && normUnit==="개");
+
+  if(!unitOk) return { ok:false, reason:"UNIT_MISMATCH" };
+
+  const { packSize, totalBase } = window.packCeil(key, Number(baseQty||0));
+  const u = (spec.sell||[]).find(s => s.size===packSize);
+  if(!u || typeof u.price!=="number") return { ok:false, reason:"NO_PRICE" };
+
+  const packs = packSize>0 ? Math.round(totalBase/packSize) : 0;
+  return { ok:true, packs, unitPrice:u.price, subtotal: packs*u.price, keyUsed:key };
+}
+
+// 총합 계산
+function calcCartTotal(items){
+  let total=0, missing=[];
+  for(const it of items){
+    const r = calcItemPrice(it.name, it.unit, it.qty);
+    if(r.ok) total += r.subtotal; else missing.push({name:it.name, reason:r.reason});
+  }
+  return { total, missing };
+}
+
+
+// 🧩 메뉴 항목 이름을 판매단위 이름으로 변환
+function toUnitMapKey(name) {
+  return NAME_ALIAS[name] || name;
+}
+
+const IMAGE_MAP = {
+  "갈치": "https://cdn.imweb.me/upload/S202510104a8ac458dba6c/e224ef34a410f.png",
+  "감자": "https://cdn.imweb.me/upload/S202510104a8ac458dba6c/faaf4324fabd2.png",
+  "계란": "https://cdn.imweb.me/upload/S202510104a8ac458dba6c/8ac26d36d7d9f.png",
+  "김": "https://cdn.imweb.me/upload/S202510104a8ac458dba6c/773f7ba41aa5b.png",
+  "깻잎": "https://cdn.imweb.me/upload/S202510104a8ac458dba6c/487118f505606.png",
+  "느타리버섯": "https://cdn.imweb.me/upload/S202510104a8ac458dba6c/0377601364ed4.png",
+  "다시마": "https://cdn.imweb.me/upload/S202510104a8ac458dba6c/ba8cb258f31a6.png",
+  "닭가슴살": "https://cdn.imweb.me/upload/S202510104a8ac458dba6c/7e62d740a1328.png",
+  "닭다리살": "https://cdn.imweb.me/upload/S202510104a8ac458dba6c/bd80c22d3b365.png",
+  "당근": "https://cdn.imweb.me/upload/S202510104a8ac458dba6c/a00a644c29db2.png",
+  "대파": "https://cdn.imweb.me/upload/S202510104a8ac458dba6c/a8c134c26ae69.png",
+  "두부": "https://cdn.imweb.me/upload/S202510104a8ac458dba6c/e071adb636571.png",
+  "떡국떡": "https://cdn.imweb.me/upload/S202510104a8ac458dba6c/177da34f48bd4.png",
+  "마늘": "https://cdn.imweb.me/upload/S202510104a8ac458dba6c/12be130ddff2e.png",
+  "멸치": "https://cdn.imweb.me/upload/S202510104a8ac458dba6c/3f81c1cc57891.png",
+  "미역": "https://cdn.imweb.me/upload/S202510104a8ac458dba6c/e9d468823f0d7.png",
+  "김치": "https://cdn.imweb.me/upload/S202510104a8ac458dba6c/f828a52631108.png",
+  "소고기": "https://cdn.imweb.me/upload/S202510104a8ac458dba6c/325c6b21117e2.png",
+  "돼지고기": "https://cdn.imweb.me/upload/S202510104a8ac458dba6c/6f3d2a62e0512.png",
+  "순두부": "https://cdn.imweb.me/upload/S202510104a8ac458dba6c/907fc1ea38634.png",
+  "시금치": "https://cdn.imweb.me/upload/S202510104a8ac458dba6c/e0317ad7d9cff.png",
+  "식빵": "https://cdn.imweb.me/upload/S202510104a8ac458dba6c/9e4ed59a7a715.png",
+  "쌀": "https://cdn.imweb.me/upload/S202510104a8ac458dba6c/55b4f21d4888c.png",
+  "애호박": "https://cdn.imweb.me/upload/S202510104a8ac458dba6c/6ffaa8e4b6e37.png",
+  "양파": "https://cdn.imweb.me/upload/S202510104a8ac458dba6c/e01ad839feaf7.png",
+  "오징어": "https://cdn.imweb.me/upload/S202510104a8ac458dba6c/f46d2179b9d44.png",
+  "참깨": "https://cdn.imweb.me/upload/S202510104a8ac458dba6c/2714a21737307.png",
+  "참치": "https://cdn.imweb.me/upload/S202510104a8ac458dba6c/7272e45449ccf.png",
+  "청양고추": "https://cdn.imweb.me/upload/S202510104a8ac458dba6c/c8c066de9b5c8.png",
+  "콩나물": "https://cdn.imweb.me/upload/S202510104a8ac458dba6c/f86ddae307d8d.png",
+  "팽이버섯": "https://cdn.imweb.me/upload/S202510104a8ac458dba6c/e08007c1fcfae.png",
+  "고등어(손질)": "https://cdn.imweb.me/upload/S202510104a8ac458dba6c/3074975216231.png",
+  "냉면사리": "https://cdn.imweb.me/upload/S202510104a8ac458dba6c/f8382e23c9f8e.png",
+  "무": "https://cdn.imweb.me/upload/S202510104a8ac458dba6c/8d22795c5171f.png",
+  "바나나":"https://cdn.imweb.me/upload/S202510104a8ac458dba6c/c69dbf78bbec7.png",
+  "밥": "https://cdn.imweb.me/upload/S202510104a8ac458dba6c/bd5e4601f4784.png",
+  "빵가루": "https://cdn.imweb.me/upload/S202510104a8ac458dba6c/36539aeb723cd.png",
+  "양배추": "https://cdn.imweb.me/upload/S202510104a8ac458dba6c/80b1e118b2b1a.png",
+  "양상추": "https://cdn.imweb.me/upload/S202510104a8ac458dba6c/8e801d54145cd.png",
+  "오이": "https://cdn.imweb.me/upload/S202510104a8ac458dba6c/f03d17831fe3c.png",
+  "오트밀": "https://cdn.imweb.me/upload/S202510104a8ac458dba6c/47224bb5b099e.png",
+  "우유": "https://cdn.imweb.me/upload/S202510104a8ac458dba6c/2067e0146e7dd.png",
+  "쪽파": "https://cdn.imweb.me/upload/S202510104a8ac458dba6c/e668248ff267e.png",
+  "찹쌀가루": "https://cdn.imweb.me/upload/S202510104a8ac458dba6c/26127274d57b6.png",
+  "방울토마토": "https://cdn.imweb.me/upload/S202510104a8ac458dba6c/2ece365c5a6bc.png",
+};
+
+// 이름 정규화하여 이미지 찾기 (여분 공백/별칭까지 케어)
+function getImageUrl(rawName) {
+  if (!rawName) return null;
+  const name = String(rawName).replace(/\s+/g, " ").trim(); // 다중 공백 정리
+  // 1) 정확 일치
+  if (IMAGE_MAP[name]) return IMAGE_MAP[name];
+  // 2) 별칭 후 재시도
+  const aliased = toUnitMapKey(name);
+  if (IMAGE_MAP[aliased]) return IMAGE_MAP[aliased];
+  // 3) 공백 제거 비교(예: '느타리버섯' vs '느타리 버섯')
+  const compact = name.replace(/\s+/g, "");
+  for (const k of Object.keys(IMAGE_MAP)) {
+    if (k.replace(/\s+/g, "") === compact) return IMAGE_MAP[k];
+  }
+  return null; // 없으면 null
+}
+
+    function mergeCartFromMenus(menus){
+  const map = new Map();
+
+  // 1) 합산
+  for (const m of menus) {
+    for (const raw of (m.ingredients || [])) {
+      const k = (raw.name + '__' + (raw.unit || ''));
+      if (!map.has(k)) {
+        map.set(k, { ...raw, qty: Number(raw.qty || 0) });
+      } else {
+        const acc = map.get(k);
+        acc.qty = Number(acc.qty || 0) + Number(raw.qty || 0);
+      }
+    }
+  }
+
+  // 2) 합산 후 → 판매단위 올림(ceil)
+  const out = [];
+  for (const it of map.values()) {
+    const nameKey = toUnitMapKey(it.name);
+const spec = (window.UNIT_MAP || {})[nameKey];
+const normUnit = normalizeUnitFor(it.name, it.unit);
+
+const supported =
+  spec &&
+  ((spec.base === "weight" && normUnit === "g") ||
+   (spec.base === "volume" && normUnit === "ml") ||
+   (spec.base === "count"  && normUnit === "개"));
+
+if (supported && typeof window.packCeil === "function") {
+  const { totalBase } = window.packCeil(nameKey, Number(it.qty || 0));
+  out.push({ ...it, name: nameKey, unit: normUnit, qty: totalBase });
+} else {
+  out.push({ ...it, unit: normUnit });
+}
+
+  }
+
+  // 3) 정렬
+  return out.sort(
+    (a, b) =>
+      (a.category || '').localeCompare(b.category || '') ||
+      a.name.localeCompare(b.name)
+  );
+}
+
+    function renderMenus(){
+      const box = document.getElementById('menusBox'); if(!box) return; box.innerHTML='';
+      if(!state.menus.length){ box.textContent='메뉴가 없습니다.'; return; }
+      const list=document.createElement('div'); list.style.display='grid'; list.style.gap='10px';
+      state.menus.forEach((m,idx)=>{
+        const row=document.createElement('div'); row.className='tr'; row.style.gridTemplateColumns='1.4fr .6fr 1fr auto';
+        
+        // Create source badge
+        const sourceBadge = m.source === 'gpt' 
+          ? '<span class="menu-source-badge menu-source-gpt">🤖 GPT</span>'
+          : '<span class="menu-source-badge menu-source-local">📚 기본</span>';
+        
+        row.innerHTML =
+          '<div><strong>'+m.title+'</strong> '+sourceBadge+'<div class="small muted">주요 재료: '+(m.ingredients||[]).slice(0,3).map(i=>i.name).join(', ')+((m.ingredients||[]).length>3?' 등':'')+'</div></div>'+
+          '<div>인분: <strong>'+m.servings+'</strong></div>'+
+          '<div>재료수: <strong>'+((m.ingredients&&m.ingredients.length)||0)+'</strong></div>'+
+          '<div style="text-align:right"><button class="icon-btn" data-rm-menu="'+idx+'">🗑️ 메뉴 제외</button></div>';
+        list.appendChild(row);
+      });
+      box.appendChild(list);
+      box.querySelectorAll('[data-rm-menu]').forEach(btn=> btn.addEventListener('click', e=>{
+        const i = Number(e.currentTarget.getAttribute('data-rm-menu'));
+        const removedMenu = state.menus.splice(i,1)[0];
+        state.removed.push({ type:'menu', payload: removedMenu });
+        state.cart = mergeCartFromMenus(state.menus);
+        drawAll();
+      }));
+    }
+
+    function renderCart(){
+  const box=document.getElementById('cartBox'); if(!box) return;
+  const q = (document.getElementById('cartSearch') && document.getElementById('cartSearch').value || '').trim().toLowerCase();
+  let items = state.cart.slice();
+  if(q) items = items.filter(it => (it.name||'').toLowerCase().indexOf(q)>-1);
+  if(!items.length){ box.innerHTML='<div class="muted">장바구니가 비었거나 검색 결과가 없습니다.</div>'; return; }
+
+  const head=document.createElement('div');
+  head.className='th';
+  head.textContent='재료 / 수량 / 단위 / 금액 / 작업';
+
+  const wrap=document.createElement('div'); wrap.style.display='grid'; wrap.style.gap='8px';
+
+  // 지원 가능한 항목인지(판매단위 적용 가능) 체크
+  const isSellEnabled = (it)=>{
+  const { spec } = getSpecWithAlias(it.name);
+  const unit = normalizeUnitFor(it.name, it.unit);
+  if(!spec) return false;
+  if(spec.base==="weight" && unit==="g") return true;
+  if(spec.base==="volume" && unit==="ml") return true;
+  if(spec.base==="count"  && unit==="개") return true;
+  return false;
+};
+
+
+  items.forEach((it,idx)=>{
+  const supported = isSellEnabled(it);
+  const friendly = supported ? window.formatForDisplay(it.name, Number(it.qty||0)) : '';
+  const img = (typeof getImageUrl === 'function') ? getImageUrl(it.name) : null;
+  const imgHTML = img ? `<img src="${img}" alt="${it.name}" class="thumb" loading="lazy">` : '';
+
+  const priceInfo = calcItemPrice(it.name, it.unit, it.qty);
+  const priceHTML = priceInfo.ok
+    ? `<div><strong>${KRW.format(priceInfo.subtotal)}</strong><div class="small muted">${priceInfo.packs}팩 × ${KRW.format(priceInfo.unitPrice)}</div></div>`
+    : `<div class="small muted">가격정보 없음</div>`;
+
+  const row=document.createElement('div'); row.className='tr';
+  row.style.gridTemplateColumns='1.2fr .8fr .6fr .8fr auto';
+  
+  row.innerHTML =
+    `<div class="inline">
+       ${imgHTML}
+       <div>
+         <strong>${it.name}</strong>
+         <div class="small muted">
+           ${friendly ? friendly : (it.category||'기타')}
+         </div>
+       </div>
+     </div>
+     <div>
+       <div class="inline" style="gap:6px">
+         <button class="icon-btn" data-dec="${idx}">−</button>
+         <input data-qty="${idx}" type="number" min="0" step="0.1"
+                value="${Number(it.qty||0)}" style="max-width:110px"/>
+         <button class="icon-btn" data-inc="${idx}">＋</button>
+       </div>
+     </div>
+     <div>${it.unit||''}</div>
+     <div>${priceHTML}</div>
+     <div style="text-align:right"><button class="icon-btn" data-remove="${idx}">제거</button></div>`;
+
+  wrap.appendChild(row);
+});
+
+
+  const totals = calcCartTotal(items);
+  const footer = document.createElement('div');
+  footer.className='tr';
+  footer.style.gridTemplateColumns='1fr auto';
+  footer.innerHTML =
+    `<div><strong>합계</strong>${totals.missing.length ? ` <span class="small muted">(+가격정보 없음 ${totals.missing.length}건)</span>` : ''}</div>
+     <div style="text-align:right"><strong style="font-size:18px">${KRW.format(totals.total)}</strong></div>`;
+
+  box.innerHTML=''; 
+  box.appendChild(head); 
+  box.appendChild(wrap); 
+  box.appendChild(footer);
+
+  // + 버튼: 판매단위 스텝 적용
+  box.querySelectorAll('[data-inc]').forEach(b=> b.addEventListener('click', e=>{
+    const i=Number(e.currentTarget.getAttribute('data-inc'));
+    const it = state.cart[i];
+    const spec = (window.UNIT_MAP||{})[it.name];
+    const supported = spec && (
+      (spec.base==="weight" && it.unit==="g") ||
+      (spec.base==="volume" && it.unit==="ml") ||
+      (spec.base==="count"  && it.unit==="개")
+    );
+    if(supported){
+      it.qty = window.nudgeByStep(it.name, Number(it.qty||0), true);
+    }else{
+      it.qty = Number(it.qty||0)+1; // 기존 fallback
+    }
+    drawAll();
+  }));
+
+  // − 버튼: 판매단위 스텝 + 히스테리시스 적용
+  box.querySelectorAll('[data-dec]').forEach(b=> b.addEventListener('click', e=>{
+    const i=Number(e.currentTarget.getAttribute('data-dec'));
+    const it = state.cart[i];
+    const spec = (window.UNIT_MAP||{})[it.name];
+    const supported = spec && (
+      (spec.base==="weight" && it.unit==="g") ||
+      (spec.base==="volume" && it.unit==="ml") ||
+      (spec.base==="count"  && it.unit==="개")
+    );
+    if(supported){
+      it.qty = window.nudgeByStep(it.name, Number(it.qty||0), false);
+    }else{
+      it.qty = Math.max(0, Number(it.qty||0)-1);
+    }
+    drawAll();
+  }));
+
+  // 직접 입력 시: 가능한 경우 판매단위로 ceil 스냅
+  box.querySelectorAll('[data-qty]').forEach(inp=> inp.addEventListener('change', e=>{
+    const i=Number(e.currentTarget.getAttribute('data-qty'));
+    const it = state.cart[i];
+    const v = Number(e.currentTarget.value);
+    const sanitized = Number.isFinite(v)? v: 0;
+    const spec = (window.UNIT_MAP||{})[it.name];
+    const supported = spec && (
+      (spec.base==="weight" && it.unit==="g") ||
+      (spec.base==="volume" && it.unit==="ml") ||
+      (spec.base==="count"  && it.unit==="개")
+    );
+    if(supported){
+      const packed = window.packCeil(it.name, sanitized);
+      it.qty = packed.totalBase;
+    }else{
+      it.qty = sanitized;
+    }
+    drawAll();
+  }));
+
+  // 제거
+  box.querySelectorAll('[data-remove]').forEach(b=> b.addEventListener('click', e=>{
+    const i=Number(e.currentTarget.getAttribute('data-remove'));
+    const removed=state.cart.splice(i,1)[0];
+    state.removed.push({type:'item', payload: removed});
+    drawAll();
+  }));
+}
+
+    function drawRemoved(){
+      const box=document.getElementById('removedBox'); if(!box) return; if(!state.removed.length){ box.textContent=''; return; }
+      box.innerHTML = '제거 내역: ' + state.removed.map((r,idx)=>'<button class="icon-btn" data-restore="'+idx+'">↩️ '+(r.type==='item'? r.payload.name : r.payload.title)+'</button>').join(' ');
+      box.querySelectorAll('[data-restore]').forEach(b=> b.addEventListener('click', e=>{
+        const i=Number(e.currentTarget.getAttribute('data-restore')); const rec=state.removed.splice(i,1)[0];
+        if(rec.type==='item'){
+          const k=keyOf(rec.payload); const idx=state.cart.findIndex(x=> keyOf(x)===k);
+          if(idx>=0) state.cart[idx].qty = Number(state.cart[idx].qty||0) + Number(rec.payload.qty||0);
+          else state.cart.push({...rec.payload});
+        } else if(rec.type==='menu'){
+          state.menus.push(rec.payload); state.cart = mergeCartFromMenus(state.menus);
+        }
+        drawAll();
+      }));
+    }
+
+    function drawAll(){ renderMenus(); renderCart(); drawRemoved(); }
+
+    // 툴바
+    if(document.getElementById('cartSearch')) document.getElementById('cartSearch').addEventListener('input', ()=> renderCart());
+    if(document.getElementById('clearRemovedBtn')) document.getElementById('clearRemovedBtn').addEventListener('click', ()=>{ state.removed.length=0; drawRemoved(); });
+    if(document.getElementById('restoreAllBtn')) document.getElementById('restoreAllBtn').addEventListener('click', ()=>{
+      const menus=state.removed.filter(r=>r.type==='menu').map(r=>r.payload);
+      const items=state.removed.filter(r=>r.type==='item').map(r=>r.payload);
+      if(menus.length){ state.menus.push(...menus); state.cart=mergeCartFromMenus(state.menus); }
+      for(const it of items){ const k=keyOf(it); const idx=state.cart.findIndex(x=> keyOf(x)===k); if(idx>=0) state.cart[idx].qty = Number(state.cart[idx].qty||0) + Number(it.qty||0); else state.cart.push({...it}); }
+      state.removed.length=0; drawAll();
+    });
+
+    function download(filename, text){
+      const a=document.createElement('a');
+      a.setAttribute('href','data:text/plain;charset=utf-8,'+encodeURIComponent(text));
+      a.setAttribute('download',filename); a.style.display='none';
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    }
+    if(document.getElementById('exportJsonBtn')) document.getElementById('exportJsonBtn').addEventListener('click', ()=>{
+      const payload={menus:state.menus, cart:state.cart};
+      download('bobgonggu_cart.json', JSON.stringify(payload,null,2));
+    });
+    if(document.getElementById('exportCsvBtn')) document.getElementById('exportCsvBtn').addEventListener('click', ()=>{
+      const header=['name','qty','unit','category'];
+      const rows=state.cart.map(i=> [i.name,i.qty,i.unit||'',i.category||'']);
+      const csv = [header.join(','), ...rows.map(r => r.map(x => '"' + String(x).split('"').join('""') + '"').join(','))].join('\n');
+      download('bobgonggu_cart.csv', csv);
+    });
+
+    // === Menu Constraint Calculator ===
+    class MenuConstraintCalculator {
+      /**
+       * Calculate available dinner slots based on days and skipped meals
+       * @param {number} days - Number of days for meal planning
+       * @param {Array<string>} skipMeals - Array of meal types to skip (e.g., ["아침", "점심"])
+       * @returns {number} Number of available dinner slots
+       */
+      static calculateDinnerSlots(days, skipMeals = []) {
+        const skipSet = new Set(skipMeals);
+        const needDinner = !skipSet.has("저녁");
+        
+        if (!needDinner) {
+          return 0;
+        }
+        
+        return Math.max(0, days);
+      }
+
+      /**
+       * Determine maximum menu count based on business rules
+       * @param {number} favoriteCount - Number of favorite menus provided by user
+       * @param {number} availableSlots - Number of available dinner slots
+       * @returns {number} Maximum number of menus to generate (min of 3, favorite count, available slots)
+       */
+      static determineMenuLimit(favoriteCount, availableSlots) {
+        // Business rule: Maximum 3 menus from GPT API
+        const maxApiMenus = 3;
+        
+        // Apply constraints: min of (3, favorite count, available slots)
+        return Math.min(maxApiMenus, favoriteCount, availableSlots);
+      }
+
+      /**
+       * Validate menu limits and user input constraints
+       * @param {Object} constraints - Object containing validation parameters
+       * @param {number} constraints.days - Number of days
+       * @param {Array<string>} constraints.skipMeals - Meals to skip
+       * @param {Array<string>} constraints.favoriteMenus - User's favorite menus
+       * @returns {Object} Validation result with isValid flag and details
+       */
+      static validateMenuConstraints(constraints) {
+        const { days, skipMeals = [], favoriteMenus = [] } = constraints;
+        
+        const validation = {
+          isValid: true,
+          errors: [],
+          warnings: [],
+          calculations: {}
+        };
+
+        // Validate days
+        if (!days || days < 1 || days > 7) {
+          validation.isValid = false;
+          validation.errors.push('Days must be between 1 and 7');
+        }
+
+        // Calculate dinner slots
+        const dinnerSlots = this.calculateDinnerSlots(days, skipMeals);
+        validation.calculations.dinnerSlots = dinnerSlots;
+
+        // Check if dinner is completely skipped
+        if (dinnerSlots === 0) {
+          validation.warnings.push('No dinner slots available - GPT menus will not be generated');
+        }
+
+        // Validate favorite menus
+        const favoriteCount = favoriteMenus.length;
+        validation.calculations.favoriteCount = favoriteCount;
+
+        if (favoriteCount === 0) {
+          validation.warnings.push('No favorite menus provided - will use local database only');
+        }
+
+        // Calculate menu limit
+        const menuLimit = this.determineMenuLimit(favoriteCount, dinnerSlots);
+        validation.calculations.menuLimit = menuLimit;
+
+        // Check if favorite menus exceed limit
+        if (favoriteCount > 3) {
+          validation.warnings.push(`Only first 3 favorite menus will be sent to GPT API (provided: ${favoriteCount})`);
+        }
+
+        // Check if available slots limit menu generation
+        if (favoriteCount > dinnerSlots && dinnerSlots > 0) {
+          validation.warnings.push(`Limited to ${dinnerSlots} menus due to available dinner slots (favorites: ${favoriteCount})`);
+        }
+
+        return validation;
+      }
+
+      /**
+       * Get constraint summary for display purposes
+       * @param {Object} constraints - Constraint parameters
+       * @returns {Object} Summary object with key metrics
+       */
+      static getConstraintSummary(constraints) {
+        const validation = this.validateMenuConstraints(constraints);
+        
+        return {
+          totalDays: constraints.days,
+          dinnerSlots: validation.calculations.dinnerSlots,
+          favoriteMenusProvided: validation.calculations.favoriteCount,
+          maxGPTMenus: validation.calculations.menuLimit,
+          willUseFallback: validation.calculations.menuLimit < validation.calculations.favoriteCount || validation.calculations.dinnerSlots === 0,
+          hasWarnings: validation.warnings.length > 0,
+          warnings: validation.warnings
+        };
+      }
+    }
+
+    // === Enhanced Backend with GPT Integration ===
+    async function simulateBackend(ans) {
+      const days = Math.max(1, Number(ans?.days || 1));
+      const people = Math.max(1, Number(ans?.people || 2));
+      const skip = new Set(ans?.skipMeals || []);
+      const favs = ans?.favoriteMenu || [];
+
+      const needBreakfast = !skip.has("아침");
+      const needLunch = !skip.has("점심");
+      const needDinner = !skip.has("저녁");
+
+      // Create base plan using local database
+      const basePlan = createBasePlan(days, people, skip, favs);
+      
+      // Check if we have favorite menus to process with GPT
+      if (favs && favs.length > 0 && needDinner) {
+        // Calculate constraints for GPT integration
+        const dinnerSlots = MenuConstraintCalculator.calculateDinnerSlots(days, Array.from(skip));
+        const menuLimit = MenuConstraintCalculator.determineMenuLimit(favs.length, dinnerSlots);
+        
+        if (menuLimit > 0) {
+          // Limit favorite menus to calculated maximum
+          const favoriteSubset = favs.slice(0, menuLimit);
+          
+          console.log(`Attempting GPT menu generation for ${favoriteSubset.length} favorite menus`);
+          
+          // Use graceful degradation manager for GPT operation with fallback
+          return await GPTDegradationManager.attemptGPTWithFallback(
+            // GPT operation
+            async () => {
+              const gptMenus = await window.gptClient.generateMenus(favoriteSubset, people, menuLimit);
+              
+              if (gptMenus && gptMenus.length > 0) {
+                console.log(`Successfully generated ${gptMenus.length} GPT menus`);
+                return scheduleGPTMenus(basePlan, gptMenus, days, skip);
+              } else {
+                throw new ValidationError('GPT API returned no valid menus');
+              }
+            },
+            // Fallback operation
+            async () => {
+              console.log('Using local database fallback');
+              return basePlan;
+            }
+          );
+        } else {
+          console.log('No dinner slots available for GPT menus, using local database only');
+          GPTUIManager.showStatusMessage('저녁 슬롯이 없어 GPT 메뉴를 적용할 수 없습니다.', 'info');
+        }
+      } else if (favs && favs.length > 0 && !needDinner) {
+        console.log('Favorite menus provided but dinner is skipped, using local database only');
+        GPTUIManager.showStatusMessage('저녁을 건너뛰어 선호 메뉴를 적용할 수 없습니다.', 'info');
+      }
+      
+      // Return base plan if no GPT integration needed
+      return basePlan;
+    }
+
+    // Helper function to create base meal plan using local database
+    function createBasePlan(days, people, skip, favs) {
+      const needBreakfast = !skip.has("아침");
+      const needLunch = !skip.has("점심");
+      const needDinner = !skip.has("저녁");
+
+      const favNorm = favs.map(s => s.replace(/\s+/g,'').toLowerCase());
+      const reorder = (list) => {
+        if (!favNorm.length) return list.slice();
+        return list.slice().sort((a, b) => {
+          const aHit = favNorm.some(f => a.name.replace(/\s+/g,'').toLowerCase().includes(f));
+          const bHit = favNorm.some(f => b.name.replace(/\s+/g,'').toLowerCase().includes(f));
+          return (aHit===bHit)?0:(aHit?-1:1);
+        });
+      };
+
+      const bList = reorder(MENU_DB.breakfast);
+      const lList = reorder(MENU_DB.lunch);
+      const dList = reorder(MENU_DB.dinner);
+
+      const plan = [];
+      for (let d = 0; d < days; d++) {
+        if (needBreakfast) plan.push({ meal:'아침', dish: bList[d % bList.length] });
+        if (needLunch)     plan.push({ meal:'점심', dish: lList[d % lList.length] });
+        if (needDinner)    plan.push({ meal:'저녁', dish: dList[d % dList.length] });
+      }
+
+      const menus = plan.map(({ meal, dish }) => ({
+        title: `${meal} · ${dish.name}`,
+        servings: people,
+        time: dish.time,
+        source: 'local', // Mark as local database menu
+        ingredients: dish.ingredients.map(it => ({
+          name: it.name,
+          unit: it.unit,
+          qty: Number((it.qty * people).toFixed(1)),
+          category: it.category || undefined
+        }))
+      }));
+
+      return menus;
+    }
+
+    // Helper function to schedule GPT menus into dinner slots
+    function scheduleGPTMenus(basePlan, gptMenus, days, skipMeals) {
+      const skipSet = new Set(skipMeals);
+      const needDinner = !skipSet.has("저녁");
+      
+      if (!needDinner || !gptMenus || gptMenus.length === 0) {
+        return basePlan;
+      }
+
+      // Find dinner slot indices in the base plan
+      const dinnerIndices = [];
+      let dayCounter = 0;
+      let mealInDay = 0;
+      
+      for (let i = 0; i < basePlan.length; i++) {
+        const menu = basePlan[i];
+        if (menu.title.includes('저녁')) {
+          dinnerIndices.push(i);
+        }
+      }
+
+      // Replace dinner slots with GPT menus starting from day 1
+      const enhancedPlan = [...basePlan];
+      for (let i = 0; i < Math.min(gptMenus.length, dinnerIndices.length); i++) {
+        const dinnerIndex = dinnerIndices[i];
+        const gptMenu = gptMenus[i];
+        
+        // Replace the dinner slot with GPT menu
+        enhancedPlan[dinnerIndex] = {
+          title: `저녁 · ${gptMenu.name}`,
+          servings: gptMenu.servings,
+          time: gptMenu.cookingTime || gptMenu.time || 30,
+          source: 'gpt', // Mark as GPT-generated menu
+          ingredients: gptMenu.ingredients.map(it => ({
+            name: it.name,
+            unit: it.unit,
+            qty: Number(it.qty),
+            category: it.category || undefined
+          }))
+        };
+      }
+
+      return enhancedPlan;
+    }
+
+    // 제출 버튼 리스너(한 군데만)
+    (function(){
+      const btn = document.getElementById('submitBtn');
+      if(!btn) return;
+      const clone = btn.cloneNode(true);
+      btn.parentNode.replaceChild(clone, btn);
+      clone.addEventListener('click', async ()=>{
+        const ans = (typeof getAnswers==='function') ? getAnswers() : {};
+        
+        // Check if we have favorite menus for GPT integration
+        const hasFavorites = ans?.favoriteMenu && ans.favoriteMenu.length > 0;
+        const skipSet = new Set(ans?.skipMeals || []);
+        const needDinner = !skipSet.has("저녁");
+        
+        // Show appropriate loading message
+        if (hasFavorites && needDinner) {
+          GPTUIManager.showLoading('선호 메뉴 분석 중...');
+        } else {
+          GPTUIManager.showLoading('메뉴 생성 중...');
+        }
+        
+        try{
+          const menus = await simulateBackend(ans);
+          state.menus = menus; 
+          state.cart = mergeCartFromMenus(state.menus);
+          const wrap = document.getElementById('resultWrap'); 
+          if(wrap) wrap.classList.remove('hidden');
+          drawAll();
+          
+          // Hide loading and provide feedback based on menu sources
+          GPTUIManager.hideLoading();
+          
+          const gptMenuCount = menus.filter(menu => menu.source === 'gpt').length;
+          const localMenuCount = menus.filter(menu => menu.source === 'local').length;
+          
+          if (gptMenuCount > 0) {
+            GPTUIManager.showStatusMessage(
+              `✅ 생성 완료! ${gptMenuCount}개의 GPT 맞춤 메뉴와 ${localMenuCount}개의 기본 메뉴가 생성되었습니다.`, 
+              'success'
+            );
+          } else if (hasFavorites && needDinner) {
+            GPTUIManager.showStatusMessage(
+              '⚠️ GPT 메뉴 생성에 실패하여 기본 추천 메뉴로 대체되었습니다.', 
+              'warning'
+            );
+          } else {
+            GPTUIManager.showStatusMessage(
+              `✅ 메뉴 생성 완료! ${localMenuCount}개의 추천 메뉴가 준비되었습니다.`, 
+              'success'
+            );
+          }
+        }catch(e){ 
+          GPTUIManager.hideLoading();
+          GPTUIManager.showStatusMessage('❌ 메뉴 생성 중 오류가 발생했습니다.', 'error');
+          console.error(e); 
+        }
+      });
+    })();
+  </script>
+<script>
+/* === grocery-units.js (browser) === */
+(function(){
+  const HYST = 0.97;
+
+  function fmtTrimZeros(v, unit){ const s=(Math.round(v*10)/10).toFixed(1); return (s.endsWith(".0")? s.slice(0,-2): s)+unit; }
+  function formatWeight(g){ return g>=1000 ? fmtTrimZeros(g/1000,"kg") : Math.round(g)+"g"; }
+  function formatVolume(ml){ return ml>=1000 ? fmtTrimZeros(ml/1000,"L") : Math.round(ml)+"ml"; }
+  function isTrayLike(label){ return /개입/.test(label); }
+  function hasLeadingOneCounter(label){ return /^1[가-힣]/.test(label); }
+  function extractParenContent(label){ const m=label.match(/\(([^)]+)\)/); return m? m[1]: null; }
+
+  window.UNIT_MAP = {
+     "쌀":{base:"weight",displayKind:"bag",
+      sell:[{size:1000,label:"1kg",price:3000},{size:4000,label:"4kg",price:11000},{size:10000,label:"10kg",price:26000},{size:20000,label:"20kg",price:50000}]
+    },
+    "밥":{base:"count",displayKind:"instant",uiStep:3,
+      sell:[{size:3,label:"즉석밥 3입",price:3300},{size:6,label:"즉석밥 6입",price:6200},{size:12,label:"즉석밥 12입",price:12000}]
+    },
+    "계란":{base:"count",displayKind:"tray",uiStep:10,
+      sell:[{size:10,label:"10개입",price:5500},{size:15,label:"15개입",price:7500},{size:30,label:"30개입",price:13000}]
+    },
+    "감자":{base:"weight",displayKind:"bag",uiStep:1000,approxPiecesPerPack:"1kg≈5~6개",
+      sell:[{size:1000,label:"1kg",price:2500},{size:2000,label:"2kg",price:4800},{size:3000,label:"3kg",price:7000},{size:5000,label:"5kg",price:11500}]
+    },
+    "당근":{base:"weight",displayKind:"bag",uiStep:1000,approxPiecesPerPack:"1kg≈5~6개",
+      sell:[{size:1000,label:"1kg",price:2200},{size:2000,label:"2kg",price:4300},{size:3000,label:"3kg",price:6300},{size:5000,label:"5kg",price:10000}]
+    },
+    "무":{base:"weight",displayKind:"whole",uiStep:2000,approxPiecesPerPack:"1통≈2kg",
+      sell:[{size:2000,label:"1통(≈2kg)",price:2000},{size:4000,label:"2통",price:3800}]
+    },
+    "양파":{base:"weight",displayKind:"bag",uiStep:1000,approxPiecesPerPack:"1kg≈4~5개",
+      sell:[{size:1000,label:"1kg",price:2000},{size:2000,label:"2kg",price:3800},{size:3000,label:"3kg",price:5600}]
+    },
+    "양배추":{base:"weight",displayKind:"whole",uiStep:500,
+      sell:[{size:500,label:"1/4통(≈500g)",price:900},{size:1000,label:"1/2통",price:1700},{size:2000,label:"1통",price:3200}]
+    },
+    "양상추":{base:"weight",displayKind:"whole",uiStep:450,
+      sell:[{size:450,label:"1통(≈450g)",price:2200}]
+    },
+    "시금치":{base:"weight",displayKind:"bunch",uiStep:350,
+      sell:[{size:350,label:"1단(≈350g)",price:2000}]
+    },
+    "고사리":{base:"weight",displayKind:"bag",uiStep:100,
+      sell:[{size:100,label:"1봉(100g)",price:2500},{size:200,label:"1봉(200g)",price:4500}]
+    },
+    "대파":{base:"weight",displayKind:"bunch",uiStep:350,
+      sell:[{size:350,label:"1단(≈350g)",price:2000},{size:200,label:"손질 200g",price:1600}]
+    },
+    "쪽파":{base:"weight",displayKind:"bunch",uiStep:300,
+      sell:[{size:300,label:"1단(≈300g)",price:1800}]
+    },
+    "오이":{base:"count",displayKind:"piece",uiStep:3,
+      sell:[{size:3,label:"3입",price:2300},{size:5,label:"5입",price:3600}]
+    },
+    "바나나":{base:"count",displayKind:"piece",uiStep:6,
+      sell:[{size:6,label:"1송이(6개내외)",price:3200}]
+    },
+    "방울토마토":{base:"weight",displayKind:"pack",uiStep:500,
+      sell:[{size:500,label:"1팩(500g)",price:3000},{size:1000,label:"1kg",price:5600}]
+    },
+
+    /* 고기/생선 */
+    "돼지고기":{base:"weight",displayKind:"pack",uiStep:400,
+      sell:[{size:300,label:"1팩(300g)",price:3300},{size:400,label:"1팩(400g)",price:4200},{size:500,label:"1팩(500g)",price:5200}]
+    },
+    "돼지고기 등심":{base:"weight",displayKind:"pack",uiStep:400,
+      sell:[{size:400,label:"1팩(400g/3~4장)",price:5500}]
+    },
+    "소고기":{base:"weight",displayKind:"pack",uiStep:400,
+      sell:[{size:300,label:"1팩(300g)",price:6500},{size:400,label:"1팩(400g)",price:8500}]
+    },
+    "닭가슴살":{base:"weight",displayKind:"pack",uiStep:500,
+      sell:[{size:500,label:"1팩(500g)",price:5000},{size:1000,label:"1kg",price:9500}]
+    },
+    "닭":{base:"weight",displayKind:"whole",uiStep:1000,
+      sell:[{size:1000,label:"1마리(≈1kg)",price:7500}]
+    },
+    "고등어(손질)":{base:"weight",displayKind:"pack",uiStep:150,
+      sell:[{size:150,label:"1팩(150g/1마리)",price:3000},{size:300,label:"2마리팩(300g)",price:5500},{size:500,label:"1팩(500g)",price:9000}]
+    },
+    "오징어":{base:"weight",displayKind:"pack",uiStep:150,
+      sell:[{size:150,label:"1팩(150g/1마리)",price:3500},{size:300,label:"2마리팩(300g)",price:6500},{size:450,label:"3마리팩(450g)",price:9000}]
+    },
+
+    /* 가공/유제품 */
+    "두부":{base:"weight",displayKind:"block",uiStep:350,
+      sell:[{size:350,label:"1모(350g)",price:2000}]
+    },
+    "순두부":{base:"weight",displayKind:"pack",uiStep:400,
+      sell:[{size:400,label:"1팩(400g)",price:1800}]
+    },
+    "빵가루":{base:"weight",displayKind:"bag",uiStep:200,
+      sell:[{size:200,label:"1봉(200g)",price:1500},{size:500,label:"1봉(500g)",price:3200}]
+    },
+    "햄":{base:"count",displayKind:"pack",uiStep:6,
+      sell:[{size:6,label:"1팩(6장)",price:3500},{size:10,label:"1팩(10장)",price:5500}]
+    },
+    "오트밀":{base:"weight",displayKind:"bag",uiStep:400,
+      sell:[{size:400,label:"1봉(400g)",price:3500},{size:1000,label:"1kg",price:7500}]
+    },
+    "찹쌀가루":{base:"weight",displayKind:"bag",uiStep:300,
+      sell:[{size:300,label:"1봉(300g)",price:2200},{size:500,label:"1봉(500g)",price:3200},{size:1000,label:"1kg",price:5800}]
+    },
+    "우유":{base:"volume",displayKind:"bottle",uiStep:1000,
+      sell:[{size:1000,label:"1L",price:2500},{size:1800,label:"1.8L",price:4400}]
+    },
+    "김치":{base:"weight",displayKind:"pack",uiStep:500,
+      sell:[{size:500,label:"1팩(500g)",price:4000},{size:1000,label:"1kg",price:7500}]
+    },
+
+    /* 추가 채소 */
+    "콩나물":{base:"weight",displayKind:"bag",uiStep:300,
+      sell:[{size:300,label:"1봉(300g)",price:1200},{size:500,label:"1봉(500g)",price:1800}]
+    },
+    "숙주나물":{base:"weight",displayKind:"bag",uiStep:300,
+      sell:[{size:300,label:"1봉(300g)",price:1500},{size:500,label:"1봉(500g)",price:2200}]
+    },
+    "애호박":{base:"weight",displayKind:"piece",uiStep:400,approxPiecesPerPack:"1개≈400g",
+      sell:[{size:400,label:"1개(≈400g)",price:1500},{size:800,label:"2개",price:2800}]
+    },
+    "청경채":{base:"weight",displayKind:"bunch",uiStep:300,
+      sell:[{size:300,label:"1단(≈300g)",price:1800}]
+    },
+    "깻잎":{base:"weight",displayKind:"pack",uiStep:50,
+      sell:[{size:50,label:"1팩(50g/약30장)",price:2000},{size:100,label:"1팩(100g)",price:3500}]
+    },
+    "고추":{base:"weight",displayKind:"bag",uiStep:100,
+      sell:[{size:100,label:"1봉(100g)",price:1500},{size:200,label:"1봉(200g)",price:2800}]
+    },
+    "청양고추":{base:"weight",displayKind:"bag",uiStep:100,
+      sell:[{size:100,label:"1봉(100g)",price:1800},{size:200,label:"1봉(200g)",price:3200}]
+    },
+    "마늘":{base:"weight",displayKind:"bag",uiStep:200,
+      sell:[{size:200,label:"깐마늘 200g",price:2500},{size:500,label:"깐마늘 500g",price:5500},{size:1000,label:"깐마늘 1kg",price:10000}]
+    },
+    "생강":{base:"weight",displayKind:"bag",uiStep:100,
+      sell:[{size:100,label:"1봉(100g)",price:1500},{size:200,label:"1봉(200g)",price:2800},{size:500,label:"1봉(500g)",price:6000}]
+    },
+    "배추":{base:"weight",displayKind:"whole",uiStep:2000,
+      sell:[{size:2000,label:"1포기(≈2kg)",price:3000},{size:4000,label:"2포기",price:5800}]
+    },
+
+    /* 버섯류 */
+    "느타리버섯":{base:"weight",displayKind:"pack",uiStep:150,
+      sell:[{size:150,label:"1팩(150g)",price:1500},{size:300,label:"1팩(300g)",price:2800}]
+    },
+    "새송이버섯":{base:"weight",displayKind:"pack",uiStep:200,
+      sell:[{size:200,label:"1팩(200g)",price:2000},{size:400,label:"1팩(400g)",price:3800}]
+    },
+    "양송이버섯":{base:"weight",displayKind:"pack",uiStep:200,
+      sell:[{size:200,label:"1팩(200g)",price:2200},{size:400,label:"1팩(400g)",price:4000}]
+    },
+    "표고버섯":{base:"weight",displayKind:"pack",uiStep:100,
+      sell:[{size:100,label:"1팩(100g)",price:2500},{size:200,label:"1팩(200g)",price:4500}]
+    },
+    "팽이버섯":{base:"weight",displayKind:"pack",uiStep:150,
+      sell:[{size:150,label:"1봉(150g)",price:1000},{size:300,label:"2봉",price:1900}]
+    },
+
+    /* 육류 추가 */
+    "닭다리살":{base:"weight",displayKind:"pack",uiStep:500,
+      sell:[{size:500,label:"1팩(500g)",price:5500},{size:1000,label:"1kg",price:10500}]
+    },
+    "삼겹살":{base:"weight",displayKind:"pack",uiStep:500,
+      sell:[{size:500,label:"1팩(500g)",price:6500},{size:1000,label:"1kg",price:12500}]
+    },
+
+    /* 면류 */
+    "냉면사리":{base:"weight",displayKind:"pack",uiStep:150,
+      sell:[{size:150,label:"1인분(150g)",price:1500},{size:300,label:"2인분(300g)",price:2500},{size:600,label:"4인분(600g)",price:4500}]
+    },
+    "식빵":{base:"count",displayKind:"pack",uiStep:10,
+      sell:[{size:10,label:"1봉(10장)",price:3500},{size:20,label:"1봉(20장)",price:6500}]
+    },
+    "단호박":{base:"weight",displayKind:"piece",uiStep:500,approxPiecesPerPack:"1개≈500g",
+      sell:[{size:500,label:"1개(≈500g)",price:3500},{size:1000,label:"1통(≈1kg)",price:6500}]
+    },
+    "당면":{base:"weight",displayKind:"bag",uiStep:100,
+      sell:[{size:100,label:"1봉(100g)",price:1200},{size:500,label:"1봉(500g)",price:4500}]
+    },
+    "국수":{base:"weight",displayKind:"bag",uiStep:400,
+      sell:[{size:400,label:"1봉(400g)",price:2500},{size:1000,label:"1kg",price:5500}]
+    },
+
+    /* 양념 및 소스 */
+    "간장":{base:"volume",displayKind:"bottle",uiStep:500,
+      sell:[{size:500,label:"500ml",price:3500},{size:930,label:"930ml",price:6000},{size:1800,label:"1.8L",price:10000}]
+    },
+    "고춧가루":{base:"weight",displayKind:"bag",uiStep:100,
+      sell:[{size:100,label:"1봉(100g)",price:2500},{size:500,label:"1봉(500g)",price:10000},{size:1000,label:"1kg",price:18000}]
+    },
+    "된장":{base:"weight",displayKind:"tub",uiStep:500,
+      sell:[{size:500,label:"1통(500g)",price:4000},{size:1000,label:"1kg",price:7500}]
+    },
+    "고추장":{base:"weight",displayKind:"tub",uiStep:500,
+      sell:[{size:500,label:"1통(500g)",price:4500},{size:1000,label:"1kg",price:8000}]
+    },
+    "쌈장":{base:"weight",displayKind:"tub",uiStep:500,
+      sell:[{size:500,label:"1통(500g)",price:3500}]
+    },
+    "식용유":{base:"volume",displayKind:"bottle",uiStep:900,
+      sell:[{size:900,label:"900ml",price:4500},{size:1800,label:"1.8L",price:8000}]
+    },
+    "참기름":{base:"volume",displayKind:"bottle",uiStep:160,
+      sell:[{size:160,label:"160ml",price:5500},{size:320,label:"320ml",price:10000}]
+    },
+    "설탕":{base:"weight",displayKind:"bag",uiStep:500,
+      sell:[{size:500,label:"1봉(500g)",price:1800},{size:1000,label:"1kg",price:3200},{size:3000,label:"3kg",price:8500}]
+    },
+    "소금":{base:"weight",displayKind:"bag",uiStep:500,
+      sell:[{size:500,label:"1봉(500g)",price:1500},{size:1000,label:"1kg",price:2500},{size:3000,label:"3kg",price:6500}]
+    },
+    "후추":{base:"weight",displayKind:"bottle",uiStep:30,
+      sell:[{size:30,label:"1병(30g)",price:2500},{size:100,label:"1병(100g)",price:7000}]
+    },
+    "다진마늘":{base:"weight",displayKind:"bottle",uiStep:200,
+      sell:[{size:200,label:"1병(200g)",price:3000},{size:500,label:"1병(500g)",price:6500}]
+    },
+    "맛술":{base:"volume",displayKind:"bottle",uiStep:500,
+      sell:[{size:500,label:"500ml",price:2500},{size:1000,label:"1L",price:4500}]
+    },
+    "식초":{base:"volume",displayKind:"bottle",uiStep:500,
+      sell:[{size:500,label:"500ml",price:2000},{size:900,label:"900ml",price:3500}]
+    }
+  };
+
+  function getSpec(ing){
+    const spec = window.UNIT_MAP[ing];
+    return spec || { base:"count", sell:[{size:1,label:"1개"}], uiStep:1, displayKind:"piece" };
+  }
+  function getStepSize(spec){ return spec.uiStep ?? spec.sell[0].size; }
+
+  function packCeilInternal(ingName, required){
+    const spec = getSpec(ingName);
+    const sells = spec.sell;
+    if(required<=0) return { unit:sells[0], multiple:0, totalBase:0 };
+    let bestUnit = sells[0], bestMul = Math.max(1, Math.ceil(required/sells[0].size));
+    let bestTotal = bestMul * bestUnit.size;
+    for(const u of sells){
+      const m = Math.max(1, Math.ceil(required / u.size));
+      const t = m*u.size;
+      if(t < bestTotal){ bestUnit=u; bestMul=m; bestTotal=t; }
+    }
+    return { unit:bestUnit, multiple:bestMul, totalBase:bestTotal };
+  }
+
+  function packFloorByStep(ingName, current){
+    const spec = getSpec(ingName);
+    const step = getStepSize(spec);
+    const mul = Math.floor(current/step);
+    return { stepSize:step, multiple:mul, totalBase: mul*step };
+  }
+
+  function nudgeByStep(ingName, current, plus){
+    const spec = getSpec(ingName);
+    const step = getStepSize(spec);
+    if(plus){
+      const nextRaw = current + step;
+      return packCeilInternal(ingName, nextRaw).totalBase;
+    }else{
+      const nextRaw = Math.max(0, current - step);
+      const floor = packFloorByStep(ingName, current);
+      const curPackBase = floor.totalBase;
+      const downBase = Math.max(0, curPackBase - step);
+      if(curPackBase===0) return 0;
+      if(nextRaw < HYST * curPackBase) return downBase;
+      return curPackBase;
+    }
+  }
+
+  function packCeil(ingName, required){
+    const {unit, multiple, totalBase} = packCeilInternal(ingName, required);
+    const spec = getSpec(ingName);
+    let packLabel = unit.label;
+    if(multiple>1){
+      if(spec.base==="weight"||spec.base==="volume"||isTrayLike(unit.label)){
+        packLabel = `${unit.label} x ${multiple}`;
+      }else if(hasLeadingOneCounter(unit.label)){
+        packLabel = unit.label.replace(/^1([가-힣]+)/, `${multiple}$1`);
+      }else{
+        packLabel = `${unit.label} x ${multiple}`;
+      }
+    }
+    return { packLabel, packSize: unit.size, totalBase };
+  }
+
+  function formatForDisplay(ingName, baseQty){
+    const spec = getSpec(ingName);
+    const {unit, multiple, totalBase} = packCeilInternal(ingName, baseQty);
+    let mainLabel = unit.label;
+    if(multiple>1){
+      if(spec.base==="weight"||spec.base==="volume"||isTrayLike(unit.label)){
+        mainLabel = `${unit.label} x ${multiple}`;
+      }else if(hasLeadingOneCounter(unit.label)){
+        mainLabel = unit.label.replace(/^1([가-힣]+)/, `${multiple}$1`);
+      }else{
+        mainLabel = `${unit.label} x ${multiple}`;
+      }
+    }
+    const parts=[];
+    const paren = extractParenContent(unit.label);
+    if(multiple>1){
+      if(paren){ parts.push(`(${paren} x ${multiple})`); }
+      else{
+        if(spec.base==="weight") parts.push(`(${formatWeight(unit.size)} x ${multiple})`);
+        else if(spec.base==="volume") parts.push(`(${formatVolume(unit.size)} x ${multiple})`);
+        else if(spec.base==="count") parts.push(`(${unit.size}개 x ${multiple})`);
+      }
+    }
+    if(spec.approxPiecesPerPack){
+      const tip = spec.approxPiecesPerPack.split("≈")[1] || spec.approxPiecesPerPack;
+      if(multiple<=1) parts.push(`(약 ${tip})`);
+      else parts.push(`(약 ${tip}/팩)`);
+    }
+    if(ingName==="계란"){
+      const surplus = totalBase - baseQty;
+      if(surplus>0) parts.push(`(남음 ${Math.round(surplus)}개 여유)`);
+    }
+    const tail = parts.length? " "+parts.join(" ") : "";
+    return `${ingName} ${mainLabel}${tail}`;
+  }
+
+  // expose
+  window.nudgeByStep = nudgeByStep;
+  window.packCeil = packCeil;
+  window.formatForDisplay = formatForDisplay;
+})();
+
+</script>
+
+</body>
+</html>
