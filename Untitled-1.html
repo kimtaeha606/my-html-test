@@ -904,6 +904,37 @@
 
         const unit = ingredient.unit ? String(ingredient.unit).trim() : '';
 
+        const toNumberOrNull = (value) => {
+          if (value === null || value === undefined || value === '') {
+            return null;
+          }
+          const num = Number(value);
+          return Number.isFinite(num) ? num : null;
+        };
+
+        const pricePerServing = toNumberOrNull(
+          ingredient.pricePerServing !== undefined ? ingredient.pricePerServing : ingredient.price
+        );
+
+        const directTotalPrice = toNumberOrNull(
+          ingredient.totalPrice ?? ingredient.estimatedTotalPrice ?? ingredient.estimatedPrice
+        );
+
+        const computedTotalPrice = pricePerServing !== null ? pricePerServing * people : null;
+        const totalPrice = directTotalPrice !== null ? directTotalPrice : computedTotalPrice;
+
+        const directUnitPrice = toNumberOrNull(
+          ingredient.unitPrice ?? ingredient.estimatedUnitPrice
+        );
+
+        const roundedTotalPrice = totalPrice !== null ? Math.round(totalPrice) : null;
+
+        const computedUnitPrice = roundedTotalPrice !== null && totalQty > 0
+          ? roundedTotalPrice / totalQty
+          : null;
+
+        const unitPriceValue = directUnitPrice !== null ? directUnitPrice : computedUnitPrice;
+
         const normalized = {
           ...ingredient,
           name,
@@ -913,15 +944,46 @@
         };
 
         if (ingredient.price !== undefined) {
-          normalized.price = Number(ingredient.price);
+          const parsed = toNumberOrNull(ingredient.price);
+          if (parsed !== null) {
+            normalized.price = parsed;
+          }
         }
 
         if (ingredient.unitPrice !== undefined) {
-          normalized.unitPrice = Number(ingredient.unitPrice);
+          const parsed = toNumberOrNull(ingredient.unitPrice);
+          if (parsed !== null) {
+            normalized.unitPrice = parsed;
+          }
         }
 
         if (ingredient.totalPrice !== undefined) {
-          normalized.totalPrice = Number(ingredient.totalPrice);
+          const parsed = toNumberOrNull(ingredient.totalPrice);
+          if (parsed !== null) {
+            normalized.totalPrice = parsed;
+          }
+        }
+
+        if (pricePerServing !== null) {
+          normalized.pricePerServing = Math.round(pricePerServing);
+          if (normalized.price === undefined) {
+            normalized.price = Math.round(pricePerServing);
+          }
+        }
+
+        if (roundedTotalPrice !== null) {
+          normalized.estimatedPrice = roundedTotalPrice;
+          if (normalized.totalPrice === undefined) {
+            normalized.totalPrice = roundedTotalPrice;
+          }
+        }
+
+        if (unitPriceValue !== null) {
+          const roundedUnit = Number(unitPriceValue.toFixed(2));
+          normalized.estimatedUnitPrice = roundedUnit;
+          if (normalized.unitPrice === undefined) {
+            normalized.unitPrice = roundedUnit;
+          }
         }
 
         if (ingredient.packSize !== undefined) {
@@ -1928,7 +1990,13 @@ function calcCartTotal(items){
   let total=0, missing=[];
   for(const it of items){
     const r = calcItemPrice(it.name, it.unit, it.qty);
-    if(r.ok) total += r.subtotal; else missing.push({name:it.name, reason:r.reason});
+    if(r.ok){
+      total += r.subtotal;
+    }else if(typeof it.estimatedPrice === 'number' && Number.isFinite(it.estimatedPrice)){
+      total += Number(it.estimatedPrice);
+    }else{
+      missing.push({name:it.name, reason:r.reason});
+    }
   }
   return { total, missing };
 }
@@ -2011,11 +2079,56 @@ function getImageUrl(rawName) {
   for (const m of menus) {
     for (const raw of (m.ingredients || [])) {
       const k = (raw.name + '__' + (raw.unit || ''));
+
+      const toNumberOrNull = (value) => {
+        if (value === null || value === undefined || value === '') {
+          return null;
+        }
+        const num = Number(value);
+        return Number.isFinite(num) ? num : null;
+      };
+
+      const qtyValue = Number(raw.qty || 0);
+      const qty = Number.isFinite(qtyValue) ? qtyValue : 0;
+
+      const estimatedPrice = toNumberOrNull(raw.estimatedPrice ?? raw.totalPrice);
+      const estimatedUnitPrice = toNumberOrNull(raw.estimatedUnitPrice ?? raw.unitPrice);
+      const pricePerServing = toNumberOrNull(raw.pricePerServing ?? raw.price);
+
       if (!map.has(k)) {
-        map.set(k, { ...raw, qty: Number(raw.qty || 0) });
+        const base = { ...raw, qty };
+
+        if (estimatedPrice !== null) {
+          base.estimatedPrice = Math.round(estimatedPrice);
+        }
+
+        if (estimatedUnitPrice !== null) {
+          base.estimatedUnitPrice = Number(estimatedUnitPrice.toFixed(2));
+        } else if (estimatedPrice !== null && qty > 0) {
+          base.estimatedUnitPrice = Number((estimatedPrice / qty).toFixed(2));
+        }
+
+        if (pricePerServing !== null) {
+          base.pricePerServing = Math.round(pricePerServing);
+        }
+
+        map.set(k, base);
       } else {
         const acc = map.get(k);
-        acc.qty = Number(acc.qty || 0) + Number(raw.qty || 0);
+        acc.qty = Number(acc.qty || 0) + qty;
+
+        if (estimatedPrice !== null) {
+          const current = toNumberOrNull(acc.estimatedPrice) || 0;
+          acc.estimatedPrice = Math.round(current + estimatedPrice);
+        }
+
+        if (acc.estimatedPrice !== undefined && Number(acc.qty) > 0) {
+          acc.estimatedUnitPrice = Number((acc.estimatedPrice / acc.qty).toFixed(2));
+        }
+
+        if (pricePerServing !== null) {
+          acc.pricePerServing = Math.round(pricePerServing);
+        }
       }
     }
   }
@@ -2035,9 +2148,17 @@ const supported =
 
 if (supported && typeof window.packCeil === "function") {
   const { totalBase } = window.packCeil(nameKey, Number(it.qty || 0));
-  out.push({ ...it, name: nameKey, unit: normUnit, qty: totalBase });
+  const next = { ...it, name: nameKey, unit: normUnit, qty: totalBase };
+  if (typeof next.estimatedUnitPrice === 'number' && Number.isFinite(next.estimatedUnitPrice)) {
+    next.estimatedPrice = Math.round(next.estimatedUnitPrice * totalBase);
+  }
+  out.push(next);
 } else {
-  out.push({ ...it, unit: normUnit });
+  const next = { ...it, unit: normUnit };
+  if (typeof next.estimatedUnitPrice === 'number' && Number.isFinite(next.estimatedUnitPrice) && Number.isFinite(Number(next.qty))) {
+    next.estimatedPrice = Math.round(next.estimatedUnitPrice * Number(next.qty));
+  }
+  out.push(next);
 }
 
   }
@@ -2103,6 +2224,16 @@ if (supported && typeof window.packCeil === "function") {
 };
 
 
+  const updateEstimatedPriceForItem = (item) => {
+    if (typeof item.estimatedUnitPrice === 'number' && Number.isFinite(item.estimatedUnitPrice)) {
+      const qty = Number(item.qty || 0);
+      if (Number.isFinite(qty)) {
+        item.estimatedPrice = Math.round(item.estimatedUnitPrice * qty);
+      }
+    }
+  };
+
+
   items.forEach((it,idx)=>{
   const supported = isSellEnabled(it);
   const friendly = supported ? window.formatForDisplay(it.name, Number(it.qty||0)) : '';
@@ -2110,9 +2241,14 @@ if (supported && typeof window.packCeil === "function") {
   const imgHTML = img ? `<img src="${img}" alt="${it.name}" class="thumb" loading="lazy">` : '';
 
   const priceInfo = calcItemPrice(it.name, it.unit, it.qty);
+  const hasEstimate = !priceInfo.ok && typeof it.estimatedPrice === 'number' && Number.isFinite(it.estimatedPrice);
+  const hasUnitEstimate = typeof it.estimatedUnitPrice === 'number' && Number.isFinite(it.estimatedUnitPrice);
+
   const priceHTML = priceInfo.ok
     ? `<div><strong>${KRW.format(priceInfo.subtotal)}</strong><div class="small muted">${priceInfo.packs}팩 × ${KRW.format(priceInfo.unitPrice)}</div></div>`
-    : `<div class="small muted">가격정보 없음</div>`;
+    : hasEstimate
+      ? `<div><strong>${KRW.format(it.estimatedPrice)}</strong><div class="small muted">GPT 추정가${hasUnitEstimate ? ` · ${KRW.format(it.estimatedUnitPrice)} / ${it.unit || ''}` : ''}</div></div>`
+      : `<div class="small muted">가격정보 없음</div>`;
 
   const row=document.createElement('div'); row.className='tr';
   row.style.gridTemplateColumns='1.2fr .8fr .6fr .8fr auto';
@@ -2171,6 +2307,7 @@ if (supported && typeof window.packCeil === "function") {
     }else{
       it.qty = Number(it.qty||0)+1; // 기존 fallback
     }
+    updateEstimatedPriceForItem(it);
     drawAll();
   }));
 
@@ -2189,6 +2326,7 @@ if (supported && typeof window.packCeil === "function") {
     }else{
       it.qty = Math.max(0, Number(it.qty||0)-1);
     }
+    updateEstimatedPriceForItem(it);
     drawAll();
   }));
 
@@ -2210,6 +2348,7 @@ if (supported && typeof window.packCeil === "function") {
     }else{
       it.qty = sanitized;
     }
+    updateEstimatedPriceForItem(it);
     drawAll();
   }));
 
@@ -2482,12 +2621,53 @@ if (supported && typeof window.packCeil === "function") {
           time: gptMenu.cookingTime || gptMenu.time || 30,
           source: gptMenu.source || 'gpt', // Preserve GPT origin metadata
           origin: gptMenu.origin || gptMenu.source || 'gpt',
-          ingredients: gptMenu.ingredients.map(it => ({
-            name: it.name,
-            unit: it.unit,
-            qty: Number(it.qty),
-            category: it.category || undefined
-          }))
+          ingredients: gptMenu.ingredients.map(it => {
+            const toNumberOrNull = (value) => {
+              if (value === null || value === undefined || value === '') {
+                return null;
+              }
+              const num = Number(value);
+              return Number.isFinite(num) ? num : null;
+            };
+
+            const qtyValue = Number(it.qty);
+            const qty = Number.isFinite(qtyValue) ? qtyValue : 0;
+
+            const perServingPrice = toNumberOrNull(it.pricePerServing ?? it.price);
+            const totalServings = toNumberOrNull(gptMenu.servings) ?? 1;
+            const directTotalPrice = toNumberOrNull(it.estimatedPrice ?? it.totalPrice);
+            const totalPrice = directTotalPrice !== null
+              ? directTotalPrice
+              : (perServingPrice !== null ? perServingPrice * totalServings : null);
+
+            const roundedTotalPrice = totalPrice !== null ? Math.round(totalPrice) : null;
+
+            const directUnitPrice = toNumberOrNull(it.estimatedUnitPrice ?? it.unitPrice);
+            const unitPrice = directUnitPrice !== null
+              ? directUnitPrice
+              : (roundedTotalPrice !== null && qty > 0 ? roundedTotalPrice / qty : null);
+
+            const ingredient = {
+              name: it.name,
+              unit: it.unit,
+              qty,
+              category: it.category || undefined
+            };
+
+            if (perServingPrice !== null) {
+              ingredient.pricePerServing = Math.round(perServingPrice);
+            }
+
+            if (roundedTotalPrice !== null) {
+              ingredient.estimatedPrice = roundedTotalPrice;
+            }
+
+            if (unitPrice !== null) {
+              ingredient.estimatedUnitPrice = Number(unitPrice.toFixed(2));
+            }
+
+            return ingredient;
+          })
         };
       }
 
