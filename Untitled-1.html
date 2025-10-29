@@ -912,16 +912,27 @@
           unit: unit || '개'
         };
 
-        if (ingredient.price !== undefined) {
-          normalized.price = Number(ingredient.price);
+        const toNumberIfFinite = (value) => {
+          if (value === null || value === undefined || value === '') {
+            return null;
+          }
+          const num = Number(value);
+          return Number.isFinite(num) ? num : null;
+        };
+
+        const maybePrice = toNumberIfFinite(ingredient.price);
+        if (maybePrice !== null) {
+          normalized.price = maybePrice;
         }
 
-        if (ingredient.unitPrice !== undefined) {
-          normalized.unitPrice = Number(ingredient.unitPrice);
+        const maybeUnitPrice = toNumberIfFinite(ingredient.unitPrice);
+        if (maybeUnitPrice !== null) {
+          normalized.unitPrice = maybeUnitPrice;
         }
 
-        if (ingredient.totalPrice !== undefined) {
-          normalized.totalPrice = Number(ingredient.totalPrice);
+        const maybeTotalPrice = toNumberIfFinite(ingredient.totalPrice);
+        if (maybeTotalPrice !== null) {
+          normalized.totalPrice = maybeTotalPrice;
         }
 
         if (ingredient.packSize !== undefined) {
@@ -1928,7 +1939,11 @@ function calcCartTotal(items){
   let total=0, missing=[];
   for(const it of items){
     const r = calcItemPrice(it.name, it.unit, it.qty);
-    if(r.ok) total += r.subtotal; else missing.push({name:it.name, reason:r.reason});
+    if(r.ok){
+      total += r.subtotal;
+    }else{
+      missing.push({name:it.name, reason:r.reason});
+    }
   }
   return { total, missing };
 }
@@ -2011,11 +2026,17 @@ function getImageUrl(rawName) {
   for (const m of menus) {
     for (const raw of (m.ingredients || [])) {
       const k = (raw.name + '__' + (raw.unit || ''));
+
+      const qtyValue = Number(raw.qty || 0);
+      const qty = Number.isFinite(qtyValue) ? qtyValue : 0;
+
       if (!map.has(k)) {
-        map.set(k, { ...raw, qty: Number(raw.qty || 0) });
+        const base = { ...raw, qty };
+
+        map.set(k, base);
       } else {
         const acc = map.get(k);
-        acc.qty = Number(acc.qty || 0) + Number(raw.qty || 0);
+        acc.qty = Number(acc.qty || 0) + qty;
       }
     }
   }
@@ -2035,9 +2056,11 @@ const supported =
 
 if (supported && typeof window.packCeil === "function") {
   const { totalBase } = window.packCeil(nameKey, Number(it.qty || 0));
-  out.push({ ...it, name: nameKey, unit: normUnit, qty: totalBase });
+  const next = { ...it, name: nameKey, unit: normUnit, qty: totalBase };
+  out.push(next);
 } else {
-  out.push({ ...it, unit: normUnit });
+  const next = { ...it, unit: normUnit };
+  out.push(next);
 }
 
   }
@@ -2102,7 +2125,6 @@ if (supported && typeof window.packCeil === "function") {
   return false;
 };
 
-
   items.forEach((it,idx)=>{
   const supported = isSellEnabled(it);
   const friendly = supported ? window.formatForDisplay(it.name, Number(it.qty||0)) : '';
@@ -2110,6 +2132,7 @@ if (supported && typeof window.packCeil === "function") {
   const imgHTML = img ? `<img src="${img}" alt="${it.name}" class="thumb" loading="lazy">` : '';
 
   const priceInfo = calcItemPrice(it.name, it.unit, it.qty);
+
   const priceHTML = priceInfo.ok
     ? `<div><strong>${KRW.format(priceInfo.subtotal)}</strong><div class="small muted">${priceInfo.packs}팩 × ${KRW.format(priceInfo.unitPrice)}</div></div>`
     : `<div class="small muted">가격정보 없음</div>`;
@@ -2482,12 +2505,17 @@ if (supported && typeof window.packCeil === "function") {
           time: gptMenu.cookingTime || gptMenu.time || 30,
           source: gptMenu.source || 'gpt', // Preserve GPT origin metadata
           origin: gptMenu.origin || gptMenu.source || 'gpt',
-          ingredients: gptMenu.ingredients.map(it => ({
-            name: it.name,
-            unit: it.unit,
-            qty: Number(it.qty),
-            category: it.category || undefined
-          }))
+          ingredients: gptMenu.ingredients.map(it => {
+            const qtyValue = Number(it.qty);
+            const qty = Number.isFinite(qtyValue) ? qtyValue : 0;
+
+            return {
+              name: it.name,
+              unit: it.unit,
+              qty,
+              category: it.category || undefined
+            };
+          })
         };
       }
 
