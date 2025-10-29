@@ -635,7 +635,8 @@
           people = 2,
           days = 1,
           maxCount = GPT_CONFIG.maxMenus,
-          skipMeals = []
+          skipMeals = [],
+          includeIngredientPrices = false
         } = options || {};
 
         if (!favorites || !Array.isArray(favorites) || favorites.length === 0) {
@@ -667,12 +668,18 @@
 
           const response = await this.circuitBreaker.execute(async () => {
             return await GPTErrorHandler.withRetry(async () => {
-              return await this.makeApiCall({
+              const payload = {
                 favorites: limitedMenus,
                 people: validatedPeople,
                 days: validatedDays,
                 skipMeals: this.normalizeSkipMeals(skipMeals)
-              });
+              };
+
+              if (includeIngredientPrices) {
+                payload.includeIngredientPrices = true;
+              }
+
+              return await this.makeApiCall(payload);
             });
           });
 
@@ -868,7 +875,7 @@
           throw new ValidationError(`메뉴 "${name}"에 재료가 없음`, menu);
         }
 
-        const normalizedIngredients = ingredients.map((ingredient, index) => 
+        const normalizedIngredients = ingredients.map((ingredient, index) =>
           this.normalizeIngredient(ingredient, index, people)
         );
 
@@ -897,11 +904,39 @@
 
         const unit = ingredient.unit ? String(ingredient.unit).trim() : '';
 
-        return {
+        const normalized = {
+          ...ingredient,
           name,
+          qtyPerServing,
           qty: totalQty,
           unit: unit || '개'
         };
+
+        if (ingredient.price !== undefined) {
+          normalized.price = Number(ingredient.price);
+        }
+
+        if (ingredient.unitPrice !== undefined) {
+          normalized.unitPrice = Number(ingredient.unitPrice);
+        }
+
+        if (ingredient.totalPrice !== undefined) {
+          normalized.totalPrice = Number(ingredient.totalPrice);
+        }
+
+        if (ingredient.packSize !== undefined) {
+          normalized.packSize = Number(ingredient.packSize);
+        }
+
+        if (ingredient.packCount !== undefined) {
+          normalized.packCount = Number(ingredient.packCount);
+        }
+
+        if (ingredient.currency) {
+          normalized.currency = String(ingredient.currency);
+        }
+
+        return normalized;
       }
 
       validateAndNormalizeNumber(value, fieldName, min, max, defaultValue) {
@@ -2340,7 +2375,8 @@ if (supported && typeof window.packCeil === "function") {
                 people,
                 days,
                 maxCount: menuLimit,
-                skipMeals: Array.from(skip)
+                skipMeals: Array.from(skip),
+                includeIngredientPrices: true
               });
               
               if (gptMenus && gptMenus.length > 0) {
