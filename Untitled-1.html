@@ -669,10 +669,22 @@
             });
           });
 
-          const menus = this.parseResponse(response, validatedPeople);
+          let menus;
+
+          try {
+            menus = this.parseResponse(response, validatedPeople);
+          } catch (parseError) {
+            console.warn('Failed to parse backend response, generating local fallback menus.', parseError);
+            this.requestCount++;
+            this.lastRequestTime = Date.now();
+            return this.generateFallbackMenusFromFavorites(limitedMenus, validatedPeople);
+          }
 
           if (!menus || menus.length === 0) {
-            throw new ValidationError('No valid menus returned from backend API');
+            console.warn('Backend returned no valid menus, generating local fallback menus.');
+            this.requestCount++;
+            this.lastRequestTime = Date.now();
+            return this.generateFallbackMenusFromFavorites(limitedMenus, validatedPeople);
           }
 
           this.requestCount++;
@@ -682,6 +694,13 @@
 
         } catch (error) {
           console.error('Backend API Error in generateMenus:', error);
+
+          if (error instanceof NetworkError) {
+            console.warn('Network error encountered, generating local fallback menus.');
+            this.requestCount++;
+            this.lastRequestTime = Date.now();
+            return this.generateFallbackMenusFromFavorites(limitedMenus, validatedPeople);
+          }
 
           if (error instanceof APIError || error instanceof ValidationError || error instanceof NetworkError) {
             throw error;
@@ -782,6 +801,38 @@
         }
       }
 
+      generateFallbackMenusFromFavorites(favorites, people) {
+        if (!Array.isArray(favorites) || favorites.length === 0) {
+          return [];
+        }
+
+        return favorites.map((rawName, index) => {
+          const name = (rawName && typeof rawName === 'string') ? rawName.trim() : '';
+          const safeName = name || `맞춤 메뉴 ${index + 1}`;
+          const baseCookingTime = 25 + (index * 5);
+
+          return {
+            name: safeName,
+            servings: people,
+            cookingTime: baseCookingTime,
+            ingredients: [
+              {
+                name: `${safeName} 주요 재료`,
+                qty: Math.max(1, Number(people) || 1),
+                unit: '인분'
+              },
+              {
+                name: '기본 양념',
+                qty: 1,
+                unit: '세트'
+              }
+            ],
+            source: 'gpt',
+            origin: 'gpt-fallback'
+          };
+        });
+      }
+
       normalizeBackendMenu(menu, people) {
         if (!menu || typeof menu !== 'object') {
           throw new ValidationError('Menu is not an object', menu);
@@ -806,7 +857,7 @@
           servings: people,
           cookingTime,
           ingredients: normalizedIngredients,
-          source: 'gpt'
+          source: menu.source || 'gpt'
         };
       }
 
@@ -1436,9 +1487,6 @@
     // Make managers globally available
     window.GPTUIManager = GPTUIManager;
     window.GPTDegradationManager = GPTDegradationManager;
-    
-    // Make MenuConstraintCalculator globally available for testing
-    window.MenuConstraintCalculator = MenuConstraintCalculator;
     
     // Test function for constraint calculation (for development/debugging)
     window.testConstraintCalculation = function() {
@@ -2233,6 +2281,9 @@ if (supported && typeof window.packCeil === "function") {
       }
     }
 
+    // Make MenuConstraintCalculator globally available for testing
+    window.MenuConstraintCalculator = MenuConstraintCalculator;
+
     // === Enhanced Backend with GPT Integration ===
     async function simulateBackend(ans) {
       const days = Math.max(1, Number(ans?.days || 1));
@@ -2372,7 +2423,8 @@ if (supported && typeof window.packCeil === "function") {
           title: `저녁 · ${gptMenu.name}`,
           servings: gptMenu.servings,
           time: gptMenu.cookingTime || gptMenu.time || 30,
-          source: 'gpt', // Mark as GPT-generated menu
+          source: gptMenu.source || 'gpt', // Preserve GPT origin metadata
+          origin: gptMenu.origin || gptMenu.source || 'gpt',
           ingredients: gptMenu.ingredients.map(it => ({
             name: it.name,
             unit: it.unit,
@@ -2419,12 +2471,16 @@ if (supported && typeof window.packCeil === "function") {
         }
 
         const gptMenuCount = menus.filter(menu => menu.source === 'gpt').length;
+        const gptFallbackCount = menus.filter(menu => menu.origin === 'gpt-fallback').length;
         const localMenuCount = menus.filter(menu => menu.source === 'local').length;
 
         let message;
         let type = 'success';
 
-        if (gptMenuCount > 0) {
+        if (gptFallbackCount > 0) {
+          message = `ℹ️ 장바구니가 준비되었어요! GPT 백엔드 응답이 없어 선호 메뉴 ${gptFallbackCount}개를 로컬에서 구성했어요. ${localMenuCount}개의 기본 메뉴도 함께 담았어요.`;
+          type = 'info';
+        } else if (gptMenuCount > 0) {
           message = `✅ 장바구니가 준비되었어요! ${gptMenuCount}개의 GPT 맞춤 메뉴와 ${localMenuCount}개의 기본 메뉴를 담았어요.`;
         } else if (usesGpt) {
           message = '⚠️ 선호 메뉴를 반영하지 못해 기본 추천 메뉴로 채웠어요.';
