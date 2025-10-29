@@ -468,9 +468,13 @@
   <!-- GPT API Integration -->
   <script>
     // GPT API Configuration
+    const storedBackend = (typeof localStorage !== 'undefined') ? localStorage.getItem('bobgonggu_backend_url') : null;
+    const DEFAULT_BACKEND = 'https://bobgonggu-api.bobgonggu.workers.dev';
+    const backendBase = (window.BOBGONGGU_API_URL || storedBackend || DEFAULT_BACKEND).replace(/\/$/, '');
+
     const GPT_CONFIG = {
-      apiUrl: 'https://api.openai.com/v1/chat/completions',
-      model: 'gpt-3.5-turbo',
+      apiUrl: `${backendBase}/`,
+      healthUrl: `${backendBase}/health`,
       timeout: 15000, // 15 seconds - increased for better reliability
       maxRetries: 2, // Increased retry attempts
       maxMenus: 3,
@@ -607,507 +611,318 @@
 
     // GPT API Client Class
     class GPTMenuClient {
-      constructor(apiKey = null) {
-        this.apiKey = apiKey || this.getApiKeyFromStorage();
+      constructor() {
         this.requestCount = 0;
         this.circuitBreaker = new GPTCircuitBreaker();
         this.rateLimiter = new GPTRateLimiter();
         this.lastRequestTime = 0;
+        this.lastHealthStatus = {
+          available: null,
+          reason: '상태 확인 전',
+          status: null,
+          timestamp: null
+        };
       }
 
-      getApiKeyFromStorage() {
-        // In a real implementation, this would be stored securely
-        // For demo purposes, we'll return null and use fallback
-        return localStorage.getItem('gpt_api_key') || null;
+      normalizeSkipMeals(skipMeals) {
+        if (!Array.isArray(skipMeals)) return [];
+        return skipMeals.map(meal => String(meal)).filter(Boolean);
       }
 
-      async generateMenus(favoriteMenus, servings = 2, maxCount = 3) {
-        // Input validation
-        if (!this.apiKey) {
-          throw new APIError('GPT API key not configured', 401);
+      async generateMenus(options = {}) {
+        const {
+          favorites,
+          people = 2,
+          days = 1,
+          maxCount = GPT_CONFIG.maxMenus,
+          skipMeals = []
+        } = options || {};
+
+        if (!favorites || !Array.isArray(favorites) || favorites.length === 0) {
+          throw new ValidationError('No favorite menus provided or invalid format', favorites);
         }
 
-        if (!favoriteMenus || !Array.isArray(favoriteMenus) || favoriteMenus.length === 0) {
-          throw new ValidationError('No favorite menus provided or invalid format', favoriteMenus);
-        }
+        const validatedPeople = this.validateAndNormalizeNumber(people, 'people', 1, 20, 2);
+        const validatedDays = this.validateAndNormalizeNumber(days, 'days', 1, 14, 1);
+        const validatedMaxCount = this.validateAndNormalizeNumber(maxCount, 'maxCount', 1, GPT_CONFIG.maxMenus, GPT_CONFIG.maxMenus);
 
-        // Validate servings parameter
-        const validatedServings = this.validateAndNormalizeNumber(servings, 'servings', 1, 20, 2);
-        const validatedMaxCount = this.validateAndNormalizeNumber(maxCount, 'maxCount', 1, GPT_CONFIG.maxMenus, 3);
-
-        // Limit and validate favorite menus
-        const limitedMenus = favoriteMenus
+        const limitedMenus = favorites
           .slice(0, validatedMaxCount)
           .filter(menu => menu && typeof menu === 'string' && menu.trim())
           .map(menu => menu.trim());
 
         if (limitedMenus.length === 0) {
-          throw new ValidationError('No valid favorite menus after filtering', favoriteMenus);
+          throw new ValidationError('No valid favorite menus after filtering', favorites);
         }
-        
+
         try {
-          // Check rate limiting
           await this.rateLimiter.checkLimit();
-          
-          const request = this.formatRequest(limitedMenus, validatedServings);
-          
-          // Use circuit breaker and retry mechanism for the entire operation
+
           const response = await this.circuitBreaker.execute(async () => {
             return await GPTErrorHandler.withRetry(async () => {
-              return await this.makeApiCall(request);
+              return await this.makeApiCall({
+                favorites: limitedMenus,
+                people: validatedPeople,
+                days: validatedDays,
+                skipMeals: this.normalizeSkipMeals(skipMeals)
+              });
             });
           });
-          
-          const menus = this.parseResponse(response);
-          
-          // Final validation of returned menus
+
+          const menus = this.parseResponse(response, validatedPeople);
+
           if (!menus || menus.length === 0) {
-            throw new ValidationError('No valid menus returned from GPT API');
+            throw new ValidationError('No valid menus returned from backend API');
           }
-          
-          console.log(`Successfully generated ${menus.length} menus from GPT API`);
+
           this.requestCount++;
           this.lastRequestTime = Date.now();
-          
+
           return menus;
-          
+
         } catch (error) {
-          console.error('GPT API Error in generateMenus:', error);
-          
-          // Re-throw with additional context if needed
+          console.error('Backend API Error in generateMenus:', error);
+
           if (error instanceof APIError || error instanceof ValidationError || error instanceof NetworkError) {
             throw error;
           }
-          
-          // Wrap unexpected errors
+
           throw new APIError(`Unexpected error in menu generation: ${error.message}`, 0, error);
         }
       }
 
-      formatRequest(favoriteMenus, servings) {
-        const prompt = `당신은 한국 요리 전문가입니다. 다음 선호 메뉴들을 기반으로 ${servings}인분 레시피를 생성해주세요:
-
-선호 메뉴: ${favoriteMenus.join(', ')}
-
-각 메뉴에 대해 다음 형식의 JSON을 반환해주세요:
-{
-  "menus": [
-    {
-      "name": "메뉴명",
-      "servings": ${servings},
-      "cookingTime": 조리시간(분),
-      "ingredients": [
-        {"name": "재료명", "qty": 수량, "unit": "단위"},
-        ...
-      ],
-      "estimatedCost": 예상비용(원)
-    }
-  ]
-}
-
-주의사항:
-- 정확한 JSON 형식으로만 응답
-- 재료는 한국에서 쉽게 구할 수 있는 것들로
-- 수량은 숫자로, 단위는 "g", "ml", "개", "공기" 등 표준 단위 사용
-- 최대 ${GPT_CONFIG.maxMenus}개 메뉴만 생성`;
-
-        return {
-          model: GPT_CONFIG.model,
-          messages: [
-            {
-              role: "system",
-              content: "당신은 한국 요리 전문가입니다. 정확한 JSON 형식으로만 응답하세요."
-            },
-            {
-              role: "user", 
-              content: prompt
-            }
-          ],
-          max_tokens: 2000,
-          temperature: 0.7
-        };
-      }
-
-      async makeApiCall(request) {
+      async makeApiCall(payload) {
         return await GPTErrorHandler.withTimeout(async (signal) => {
           try {
             const response = await fetch(GPT_CONFIG.apiUrl, {
               method: 'POST',
               headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${this.apiKey}`,
-                'User-Agent': 'BobGonggu-GPT-Client/1.0'
+                'Content-Type': 'application/json'
               },
-              body: JSON.stringify(request),
-              signal: signal
+              body: JSON.stringify(payload),
+              signal
             });
 
-            // Handle different HTTP status codes
             if (!response.ok) {
               let errorData = {};
-              let errorMessage = 'Unknown error';
-              
+              let errorMessage = `HTTP ${response.status}`;
+
               try {
                 const contentType = response.headers.get('content-type');
                 if (contentType && contentType.includes('application/json')) {
                   errorData = await response.json();
-                  errorMessage = errorData.error?.message || errorData.message || `HTTP ${response.status}`;
+                  errorMessage = errorData.error || errorData.message || errorMessage;
                 } else {
-                  errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+                  errorMessage = `${errorMessage}: ${response.statusText}`;
                 }
               } catch (parseError) {
-                console.warn('Failed to parse error response:', parseError);
-                errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+                console.warn('Failed to parse backend error response:', parseError);
               }
-              
+
               throw new APIError(errorMessage, response.status, errorData);
             }
 
-            // Validate response content type
             const contentType = response.headers.get('content-type');
             if (!contentType || !contentType.includes('application/json')) {
               throw new ValidationError('Invalid response content type', { contentType });
             }
 
-            const responseData = await response.json();
-            
-            // Basic response structure validation
-            if (!responseData || typeof responseData !== 'object') {
-              throw new ValidationError('Invalid response format: not an object', responseData);
-            }
+            return await response.json();
 
-            return responseData;
-            
           } catch (error) {
-            // Handle different types of network errors
             if (error instanceof APIError || error instanceof ValidationError) {
               throw error;
             }
-            
+
             if (error.name === 'TypeError' && error.message.includes('fetch')) {
               throw new NetworkError('Network connection failed', error);
             }
-            
+
             if (error.name === 'SyntaxError') {
               throw new ValidationError('Invalid JSON response', error);
             }
-            
-            // Generic network error
+
             throw new NetworkError(`Network error: ${error.message}`, error);
           }
         }, GPT_CONFIG.timeout);
       }
 
-      parseResponse(apiResponse) {
+      parseResponse(apiResponse, people = 2) {
         try {
-          // Comprehensive response validation
-          this.validateResponseStructure(apiResponse);
-
-          const content = apiResponse.choices[0].message.content.trim();
-          
-          if (!content) {
-            throw new ValidationError('Empty response content');
+          if (!apiResponse || typeof apiResponse !== 'object') {
+            throw new ValidationError('Invalid response format: not an object', apiResponse);
           }
-          
-          // Try to extract JSON from the response with multiple strategies
-          let menuData;
-          try {
-            menuData = this.extractMenuData(content);
-          } catch (extractError) {
-            throw new ValidationError(`Failed to extract menu data: ${extractError.message}`, { content });
-          }
-          
-          // Validate menu data structure
-          this.validateMenuDataStructure(menuData);
 
-          // Validate and normalize each menu
+          if (!Array.isArray(apiResponse.menus)) {
+            throw new ValidationError('Response missing menus array', apiResponse);
+          }
+
           const normalizedMenus = [];
-          for (let i = 0; i < menuData.menus.length; i++) {
+          apiResponse.menus.slice(0, GPT_CONFIG.maxMenus).forEach((menu, index) => {
             try {
-              const normalizedMenu = this.validateAndNormalizeMenu(menuData.menus[i], i);
-              normalizedMenus.push(normalizedMenu);
+              const normalizedMenu = this.normalizeBackendMenu(menu, people);
+              if (normalizedMenu) {
+                normalizedMenus.push(normalizedMenu);
+              }
             } catch (menuError) {
-              console.warn(`Skipping invalid menu at index ${i}:`, menuError);
-              // Continue processing other menus instead of failing completely
+              console.warn(`Skipping invalid backend menu at index ${index}:`, menuError);
             }
-          }
-          
-          if (normalizedMenus.length === 0) {
-            throw new ValidationError('No valid menus found in response', menuData);
-          }
-          
+          });
+
           return normalizedMenus;
-          
+
         } catch (error) {
           console.error('Response parsing error:', error);
-          
+
           if (error instanceof ValidationError) {
             throw error;
           }
-          
-          throw new ValidationError(`Failed to parse GPT response: ${error.message}`, apiResponse);
+
+          throw new ValidationError(`Failed to parse backend response: ${error.message}`, apiResponse);
         }
       }
 
-      validateResponseStructure(apiResponse) {
-        if (!apiResponse || typeof apiResponse !== 'object') {
-          throw new ValidationError('Response is not an object', apiResponse);
-        }
-        
-        if (!apiResponse.choices || !Array.isArray(apiResponse.choices)) {
-          throw new ValidationError('Response missing choices array', apiResponse);
-        }
-        
-        if (apiResponse.choices.length === 0) {
-          throw new ValidationError('Response choices array is empty', apiResponse);
-        }
-        
-        const choice = apiResponse.choices[0];
-        if (!choice || typeof choice !== 'object') {
-          throw new ValidationError('First choice is not an object', choice);
-        }
-        
-        if (!choice.message || typeof choice.message !== 'object') {
-          throw new ValidationError('Choice missing message object', choice);
-        }
-        
-        if (typeof choice.message.content !== 'string') {
-          throw new ValidationError('Message content is not a string', choice.message);
-        }
-      }
-
-      extractMenuData(content) {
-        // Strategy 1: Try to parse the entire content as JSON
-        try {
-          return JSON.parse(content);
-        } catch (e) {
-          // Continue to next strategy
-        }
-        
-        // Strategy 2: Extract JSON block using regex
-        const jsonMatch = content.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-          try {
-            return JSON.parse(jsonMatch[0]);
-          } catch (e) {
-            // Continue to next strategy
-          }
-        }
-        
-        // Strategy 3: Look for JSON between code blocks
-        const codeBlockMatch = content.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/);
-        if (codeBlockMatch) {
-          try {
-            return JSON.parse(codeBlockMatch[1]);
-          } catch (e) {
-            // Continue to next strategy
-          }
-        }
-        
-        // Strategy 4: Try to find and parse multiple JSON-like structures
-        const jsonObjects = content.match(/\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}/g);
-        if (jsonObjects) {
-          for (const jsonStr of jsonObjects) {
-            try {
-              const parsed = JSON.parse(jsonStr);
-              if (parsed.menus && Array.isArray(parsed.menus)) {
-                return parsed;
-              }
-            } catch (e) {
-              // Continue to next object
-            }
-          }
-        }
-        
-        throw new Error('No valid JSON found in response content');
-      }
-
-      validateMenuDataStructure(menuData) {
-        if (!menuData || typeof menuData !== 'object') {
-          throw new ValidationError('Menu data is not an object', menuData);
-        }
-        
-        if (!menuData.menus) {
-          throw new ValidationError('Menu data missing menus property', menuData);
-        }
-        
-        if (!Array.isArray(menuData.menus)) {
-          throw new ValidationError('Menus property is not an array', menuData.menus);
-        }
-        
-        if (menuData.menus.length === 0) {
-          throw new ValidationError('Menus array is empty', menuData);
-        }
-        
-        if (menuData.menus.length > GPT_CONFIG.maxMenus) {
-          console.warn(`Response contains ${menuData.menus.length} menus, limiting to ${GPT_CONFIG.maxMenus}`);
-          menuData.menus = menuData.menus.slice(0, GPT_CONFIG.maxMenus);
-        }
-      }
-
-      validateAndNormalizeMenu(menu, index = 0) {
+      normalizeBackendMenu(menu, people) {
         if (!menu || typeof menu !== 'object') {
-          throw new ValidationError(`Menu at index ${index} is not an object`, menu);
+          throw new ValidationError('Menu is not an object', menu);
         }
-        
-        // Validate required fields
-        if (!menu.name || typeof menu.name !== 'string' || !menu.name.trim()) {
-          throw new ValidationError(`Menu at index ${index} missing or invalid name`, menu);
+
+        const name = typeof menu.name === 'string' ? menu.name.trim() : '';
+        if (!name) {
+          throw new ValidationError('Menu missing name', menu);
         }
-        
-        if (!menu.ingredients || !Array.isArray(menu.ingredients)) {
-          throw new ValidationError(`Menu at index ${index} missing or invalid ingredients array`, menu);
+
+        const cookingTime = this.validateAndNormalizeNumber(menu.time, 'time', 1, 240, 30);
+
+        const ingredients = Array.isArray(menu.ingredients) ? menu.ingredients : [];
+        if (ingredients.length === 0) {
+          throw new ValidationError(`Menu "${name}" has no ingredients`, menu);
         }
-        
-        if (menu.ingredients.length === 0) {
-          throw new ValidationError(`Menu at index ${index} has empty ingredients array`, menu);
-        }
-        
-        // Validate and normalize ingredients
-        const normalizedIngredients = [];
-        for (let i = 0; i < menu.ingredients.length; i++) {
-          try {
-            const ingredient = this.validateAndNormalizeIngredient(menu.ingredients[i], i);
-            normalizedIngredients.push(ingredient);
-          } catch (ingError) {
-            console.warn(`Skipping invalid ingredient at index ${i} in menu "${menu.name}":`, ingError);
-            // Continue with other ingredients
-          }
-        }
-        
-        if (normalizedIngredients.length === 0) {
-          throw new ValidationError(`Menu at index ${index} has no valid ingredients after validation`, menu);
-        }
-        
-        // Normalize other fields with validation
-        const servings = this.validateAndNormalizeNumber(menu.servings, 'servings', 1, 20, 2);
-        const cookingTime = this.validateAndNormalizeNumber(menu.cookingTime, 'cookingTime', 1, 180, 30);
-        const estimatedCost = this.validateAndNormalizeNumber(menu.estimatedCost, 'estimatedCost', 0, 100000, 0);
+
+        const normalizedIngredients = ingredients.map((ingredient, index) => this.normalizeIngredient(ingredient, index, people));
 
         return {
-          name: menu.name.trim(),
-          servings: servings,
-          cookingTime: cookingTime,
+          name,
+          servings: people,
+          cookingTime,
           ingredients: normalizedIngredients,
-          estimatedCost: estimatedCost,
           source: 'gpt'
         };
       }
 
-      validateAndNormalizeIngredient(ingredient, index = 0) {
+      normalizeIngredient(ingredient, index, people) {
         if (!ingredient || typeof ingredient !== 'object') {
           throw new ValidationError(`Ingredient at index ${index} is not an object`, ingredient);
         }
-        
-        if (!ingredient.name || typeof ingredient.name !== 'string' || !ingredient.name.trim()) {
-          throw new ValidationError(`Ingredient at index ${index} missing or invalid name`, ingredient);
-        }
-        
-        // Validate quantity
-        const qty = this.validateAndNormalizeNumber(ingredient.qty, 'qty', 0.1, 10000, 1);
-        
-        // Normalize unit
-        let unit = '개'; // default unit
-        if (ingredient.unit && typeof ingredient.unit === 'string') {
-          unit = ingredient.unit.trim();
-        }
-        
-        // Validate unit against known units
-        const validUnits = ['g', 'kg', 'ml', 'L', '개', '공기', '장', '마리', '통', '봉', '팩', '단', '뿌리', '알'];
-        if (!validUnits.includes(unit)) {
-          console.warn(`Unknown unit "${unit}" for ingredient "${ingredient.name}", using default "개"`);
-          unit = '개';
+
+        const name = typeof ingredient.name === 'string' ? ingredient.name.trim() : '';
+        if (!name) {
+          throw new ValidationError(`Ingredient at index ${index} missing name`, ingredient);
         }
 
+        const qtyPerServing = this.validateAndNormalizeNumber(ingredient.qty, 'qty', 0, 10000, 0);
+        const totalQty = Number((qtyPerServing * people).toFixed(2));
+
+        const unit = ingredient.unit ? String(ingredient.unit).trim() : '';
+
         return {
-          name: ingredient.name.trim(),
-          qty: qty,
-          unit: unit
+          name,
+          qty: totalQty,
+          unit: unit || '개'
         };
       }
 
       validateAndNormalizeNumber(value, fieldName, min, max, defaultValue) {
-        if (value === null || value === undefined) {
+        if (value === null || value === undefined || value === '') {
           return defaultValue;
         }
-        
+
         const num = Number(value);
         if (!Number.isFinite(num)) {
           console.warn(`Invalid ${fieldName} value "${value}", using default ${defaultValue}`);
           return defaultValue;
         }
-        
+
         if (num < min) {
           console.warn(`${fieldName} value ${num} below minimum ${min}, using minimum`);
           return min;
         }
-        
+
         if (num > max) {
           console.warn(`${fieldName} value ${num} above maximum ${max}, using maximum`);
           return max;
         }
-        
+
         return num;
       }
 
-      // Check if GPT API is available and healthy
       async checkAPIHealth() {
-        try {
-          if (!this.apiKey) {
-            return {
-              available: false,
-              reason: 'API key not configured',
-              canRetry: false
-            };
-          }
+        const circuitState = this.circuitBreaker.getState();
+        const rateLimitStatus = this.rateLimiter.getStatus();
 
-          const circuitState = this.circuitBreaker.getState();
-          if (circuitState.state === 'OPEN') {
-            return {
-              available: false,
-              reason: `Circuit breaker is open (${circuitState.failureCount} recent failures)`,
-              canRetry: false,
-              retryAfter: circuitState.timeUntilReset
-            };
-          }
-
-          const rateLimitStatus = this.rateLimiter.getStatus();
-          if (rateLimitStatus.remainingRequests === 0) {
-            return {
-              available: false,
-              reason: 'Rate limit exceeded',
-              canRetry: true,
-              retryAfter: rateLimitStatus.windowMs
-            };
-          }
-
-          return {
-            available: true,
-            circuitState: circuitState.state,
-            remainingRequests: rateLimitStatus.remainingRequests,
-            requestCount: this.requestCount
+        if (circuitState.state === 'OPEN') {
+          const status = {
+            available: false,
+            reason: `Circuit breaker is open (${circuitState.failureCount} recent failures)`,
+            canRetry: false,
+            retryAfter: circuitState.timeUntilReset
           };
-          
+          this.lastHealthStatus = { ...status, status: 503, timestamp: Date.now() };
+          return status;
+        }
+
+        if (rateLimitStatus.remainingRequests === 0) {
+          const status = {
+            available: false,
+            reason: 'Rate limit exceeded',
+            canRetry: true,
+            retryAfter: rateLimitStatus.windowMs
+          };
+          this.lastHealthStatus = { ...status, status: 429, timestamp: Date.now() };
+          return status;
+        }
+
+        try {
+          const response = await fetch(GPT_CONFIG.healthUrl, {
+            method: 'GET',
+            mode: 'cors'
+          });
+
+          const ok = response.ok;
+          const status = {
+            available: ok,
+            reason: ok ? 'Healthy' : `HTTP ${response.status}`,
+            canRetry: !ok,
+            status: response.status
+          };
+
+          this.lastHealthStatus = { ...status, timestamp: Date.now() };
+          return status;
         } catch (error) {
-          return {
+          const status = {
             available: false,
             reason: `Health check failed: ${error.message}`,
-            canRetry: true
+            canRetry: true,
+            status: null
           };
+          this.lastHealthStatus = { ...status, timestamp: Date.now() };
+          return status;
         }
       }
 
-      // Get comprehensive status information
       getStatus() {
         const circuitState = this.circuitBreaker.getState();
         const rateLimitStatus = this.rateLimiter.getStatus();
-        
+
         return {
-          apiKey: this.apiKey ? 'configured' : 'not configured',
           requestCount: this.requestCount,
           lastRequestTime: this.lastRequestTime,
           circuitBreaker: circuitState,
           rateLimit: rateLimitStatus,
+          backend: {
+            url: GPT_CONFIG.apiUrl,
+            health: this.lastHealthStatus
+          },
           config: {
             timeout: GPT_CONFIG.timeout,
             maxRetries: GPT_CONFIG.maxRetries,
@@ -1116,7 +931,6 @@
         };
       }
     }
-
     // Custom Error Classes
     class APIError extends Error {
       constructor(message, status = 0, originalError = null) {
@@ -1149,9 +963,9 @@
     // Comprehensive Error Handler Utilities
     class GPTErrorHandler {
       static handle(error, fallbackCallback = null) {
-        console.error('GPT API Error:', error);
-        
-        let userMessage = 'GPT API 오류가 발생했습니다.';
+        console.error('GPT Backend Error:', error);
+
+        let userMessage = 'GPT 백엔드 오류가 발생했습니다.';
         let messageType = 'error';
         let shouldFallback = true;
         let retryable = false;
@@ -1165,7 +979,7 @@
               retryable = false;
               break;
             case 401:
-              userMessage = 'API 키가 유효하지 않습니다. 로컬 메뉴를 사용합니다.';
+              userMessage = '백엔드 인증 오류가 발생했습니다. 로컬 메뉴를 사용합니다.';
               messageType = 'warning';
               shouldFallback = true;
               retryable = false;
@@ -1214,7 +1028,7 @@
           shouldFallback = true;
           retryable = false;
         } else if (error.message.includes('API key not configured')) {
-          userMessage = 'GPT API 키가 설정되지 않았습니다. 로컬 메뉴를 사용합니다.';
+          userMessage = 'GPT 백엔드 설정이 올바르지 않습니다. 로컬 메뉴를 사용합니다.';
           messageType = 'info';
           shouldFallback = true;
           retryable = false;
@@ -1431,7 +1245,7 @@
         if (!noticeEl) return;
         
         if (originalCount > limitCount) {
-          noticeEl.textContent = `⚠️ 선호 메뉴가 ${originalCount}개 입력되었지만, GPT API 제한으로 처음 ${limitCount}개만 사용됩니다.`;
+          noticeEl.textContent = `⚠️ 선호 메뉴가 ${originalCount}개 입력되었지만, GPT 백엔드 제한으로 처음 ${limitCount}개만 사용됩니다.`;
           noticeEl.classList.remove('hidden');
         } else {
           noticeEl.classList.add('hidden');
@@ -1474,9 +1288,9 @@
           const healthCheck = await window.gptClient.checkAPIHealth();
           
           if (!healthCheck.available) {
-            console.log('GPT API not available:', healthCheck.reason);
+            console.log('GPT backend not available:', healthCheck.reason);
             GPTUIManager.showStatusMessage(
-              `GPT API 사용 불가: ${healthCheck.reason}. 로컬 메뉴를 사용합니다.`, 
+              `GPT 백엔드 사용 불가: ${healthCheck.reason}. 로컬 메뉴를 사용합니다.`,
               'info'
             );
             return await fallbackOperation();
@@ -1525,10 +1339,12 @@
       }
 
       static getRecommendedAction(gptStatus) {
-        if (gptStatus.apiKey === 'not configured') {
-          return 'Configure GPT API key to enable AI menu generation';
+        const backendHealth = gptStatus.backend?.health || {};
+
+        if (backendHealth.available === false) {
+          return 'Backend API unavailable. Local menu fallback recommended.';
         }
-        
+
         if (gptStatus.circuitBreaker.state === 'OPEN') {
           const waitTime = Math.ceil(gptStatus.circuitBreaker.timeUntilReset / 1000 / 60);
           return `GPT API temporarily disabled. Will retry in ${waitTime} minutes.`;
@@ -1550,14 +1366,19 @@
       let message = '';
       let type = 'info';
       
+      const backendHealth = status.gpt.backend?.health || {};
+
       if (status.gpt.circuitBreaker.state === 'OPEN') {
         message = `🔴 GPT API 일시 중단 (${status.gpt.circuitBreaker.failureCount}회 실패)`;
         type = 'error';
       } else if (status.gpt.rateLimit.remainingRequests === 0) {
         message = '⏳ API 요청 한도 도달, 잠시 후 다시 시도해주세요';
         type = 'warning';
-      } else if (status.gpt.apiKey === 'not configured') {
-        message = '⚙️ GPT API 키가 설정되지 않음, 로컬 메뉴 사용';
+      } else if (backendHealth.available === false) {
+        message = `⚙️ GPT 백엔드 오류: ${backendHealth.reason || '사용 불가'}, 로컬 메뉴 사용`;
+        type = 'info';
+      } else if (backendHealth.available === null) {
+        message = 'ℹ️ GPT 백엔드 상태 확인 중입니다.';
         type = 'info';
       } else {
         message = `✅ GPT API 사용 가능 (남은 요청: ${status.gpt.rateLimit.remainingRequests})`;
@@ -1586,7 +1407,7 @@
         console.log('Testing error handling...');
         try {
           // This should trigger various error conditions
-          await window.gptClient.generateMenus(['테스트 메뉴'], 2, 1);
+          await window.gptClient.generateMenus({ favorites: ['테스트 메뉴'], people: 2, maxCount: 1 });
         } catch (error) {
           console.log('Expected error caught:', error);
           return GPTErrorHandler.handle(error);
@@ -1601,7 +1422,8 @@
       showStatusPanel: () => {
         const status = GPTDegradationManager.getSystemStatus();
         console.log('=== GPT System Status ===');
-        console.log('API Key:', status.gpt.apiKey);
+        console.log('Backend URL:', status.gpt.backend?.url);
+        console.log('Backend Health:', status.gpt.backend?.health);
         console.log('Circuit Breaker:', status.gpt.circuitBreaker.state);
         console.log('Rate Limit:', `${status.gpt.rateLimit.remainingRequests}/${status.gpt.rateLimit.maxRequests}`);
         console.log('Total Requests:', status.gpt.requestCount);
@@ -2441,7 +2263,13 @@ if (supported && typeof window.packCeil === "function") {
           return await GPTDegradationManager.attemptGPTWithFallback(
             // GPT operation
             async () => {
-              const gptMenus = await window.gptClient.generateMenus(favoriteSubset, people, menuLimit);
+              const gptMenus = await window.gptClient.generateMenus({
+                favorites: favoriteSubset,
+                people,
+                days,
+                maxCount: menuLimit,
+                skipMeals: Array.from(skip)
+              });
               
               if (gptMenus && gptMenus.length > 0) {
                 console.log(`Successfully generated ${gptMenus.length} GPT menus`);
