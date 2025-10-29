@@ -2606,8 +2606,9 @@ if (supported && typeof window.packCeil === "function") {
     "쪽파":{base:"weight",displayKind:"bunch",uiStep:300,
       sell:[{size:300,label:"1단(≈300g)",price:1800}]
     },
-    "오이":{base:"count",displayKind:"piece",uiStep:3,
-      sell:[{size:3,label:"3입",price:2300},{size:5,label:"5입",price:3600}]
+    "오이":{base:"weight",displayKind:"piece",uiStep:100,
+      sell:[{size:600,label:"3입(≈600g)",price:2300},{size:1000,label:"5입(≈1kg)",price:3600}],
+      approxPiecesPerPack:"3입≈3개"
     },
     "바나나":{base:"count",displayKind:"piece",uiStep:6,
       sell:[{size:6,label:"1송이(6개내외)",price:3200}]
