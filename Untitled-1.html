@@ -43,8 +43,12 @@
     .inline{display:flex;gap:10px;align-items:center}
     .hidden{display:none}
 
-    .nav{display:flex;justify-content:space-between;margin-top:18px}
-    .btn{appearance:none;border:1px solid var(--border);background:#fff;border-radius:10px;padding:12px 16px;font-weight:700;cursor:pointer}
+    .nav{display:flex;justify-content:space-between;margin-top:18px;gap:12px;align-items:center}
+    .nav.final-step{flex-direction:column;align-items:stretch}
+    .nav.final-step #prevBtn{align-self:flex-start}
+    .btn{appearance:none;border:1px solid var(--border);background:#fff;border-radius:10px;padding:12px 16px;font-weight:700;cursor:pointer;transition:transform .06s ease,box-shadow .12s ease}
+    .btn.final-action{width:100%;padding:16px 20px;font-size:18px;display:flex;justify-content:center;align-items:center;gap:8px}
+    .btn.final-action .emoji{font-size:20px}
     .btn[disabled]{opacity:.5;cursor:not-allowed}
     .btn.fill{background:var(--carrot);border-color:var(--carrot);color:#fff}
 
@@ -56,6 +60,9 @@
     textarea:focus, input:focus, select:focus{border-color:var(--carrot)}
 
     .summary pre{background:#0F172A;color:#E2E8F0;border-radius:12px;padding:16px;overflow:auto}
+    .result-header{display:flex;flex-direction:column;gap:6px;margin-bottom:16px}
+    .result-header h2{margin:0;font-size:24px;font-weight:800}
+    .result-header p{margin:0;color:var(--muted)}
     .small{font-size:12px;color:var(--muted)}
 
     /* ====== Cart & Menu Table ====== */
@@ -76,6 +83,7 @@
       gap: 8px;
       color: var(--carrot);
       font-weight: 600;
+      margin-top: 12px;
     }
     
     .loading-spinner {
@@ -231,49 +239,41 @@
         </div>
       </article>
 
-      <!-- 완료 -->
-      <article class="slide hidden" data-id="finish">
-        <div class="q-title">✅ 입력이 완료되었어요</div>
-        <p class="q-help">요약을 확인하고 "제출하기"를 누르면 메뉴 예시와 장바구니가 생성됩니다.</p>
-        <div class="summary">
-          <div class="pill" style="margin-bottom:12px"><strong>요약</strong></div>
-          <ul id="summary" style="line-height:1.8"></ul>
-          <pre id="jsonBox" aria-label="응답 JSON"></pre>
-          <div class="toolbar">
-            <button id="copyBtn" class="btn">JSON 복사</button>
-            <button id="submitBtn" class="btn fill">제출하기</button>
-            <div id="loadingIndicator" class="loading-indicator hidden">
-              <div class="loading-spinner"></div>
-              <span id="loadingText">처리 중...</span>
-            </div>
-          </div>
-          <div id="statusMessage" class="hidden"></div>
-          <div id="truncationNotice" class="hidden"></div>
-        </div>
-
-        <hr style="border:none;border-top:1px solid var(--border);margin:18px 0"/>
-
-        <div id="resultWrap" class="hidden">
-          <div class="section-title">🍱 추천 메뉴</div>
-          <div id="menusBox" class="card" style="padding:16px"></div>
-
-          <div class="section-title">🧺 장바구니(재료 통합)</div>
-          <div class="toolbar">
-            <input id="cartSearch" type="text" placeholder="재료 검색(예: 대파, 돼지고기)" style="max-width:260px"/>
-            <button id="clearRemovedBtn" class="icon-btn">❌ 제거내역 비우기</button>
-            <button id="restoreAllBtn" class="icon-btn">↩️ 전부 복원</button>
-            <button id="exportJsonBtn" class="icon-btn">💾 JSON 저장</button>
-            <button id="exportCsvBtn" class="icon-btn">📄 CSV 저장</button>
-          </div>
-          <div id="cartBox"></div>
-          <div id="removedBox" class="small muted" style="margin-top:8px"></div>
-        </div>
-      </article>
-
       <!-- 네비게이션 -->
       <div class="nav">
         <button id="prevBtn" class="btn" disabled>이전</button>
         <button id="nextBtn" class="btn fill">다음</button>
+      </div>
+    </section>
+
+    <section id="resultSection" class="card hidden" aria-live="polite" style="margin-top:18px">
+      <div class="result-header hidden" id="resultHeader">
+        <h2>✅ 장바구니가 준비되었어요!</h2>
+        <p>맞춤 메뉴와 장바구니를 아래에서 바로 확인할 수 있어요.</p>
+      </div>
+
+      <div id="loadingIndicator" class="loading-indicator hidden" role="status" aria-live="polite">
+        <div class="loading-spinner" aria-hidden="true"></div>
+        <span id="loadingText">장바구니 생성 중...</span>
+      </div>
+
+      <div id="statusMessage" class="hidden"></div>
+      <div id="truncationNotice" class="hidden"></div>
+
+      <div class="summary" style="margin-top:16px">
+        <div class="pill" style="margin-bottom:12px"><strong>응답 요약</strong></div>
+        <ul id="summary" style="line-height:1.8"></ul>
+      </div>
+
+      <div id="resultWrap" class="hidden" style="margin-top:24px">
+        <div class="section-title">🍱 추천 메뉴</div>
+        <div id="menusBox" class="card" style="padding:16px"></div>
+
+        <div class="section-title">🧺 장바구니(재료 통합)</div>
+        <div class="toolbar">
+          <input id="cartSearch" type="text" placeholder="재료 검색(예: 대파, 돼지고기)" style="max-width:260px"/>
+        </div>
+        <div id="cartBox"></div>
       </div>
     </section>
   </main>
@@ -281,34 +281,45 @@
   <!-- 설문 로직 -->
   <script>
     // ===== 상태 =====
-    let index = 0; // 0..3 질문 + 마지막 요약(4)
+    let index = 0; // 0..3 (총 4단계)
     const slides = Array.from(document.querySelectorAll('.slide'));
     const bar = document.getElementById('bar');
     const stepLabel = document.getElementById('stepLabel');
     const prevBtn = document.getElementById('prevBtn');
     const nextBtn = document.getElementById('nextBtn');
+    const nav = document.querySelector('.nav');
 
-    function totalSteps(){ return 4; } // 질문 수
+    const FINAL_LABEL_HTML = '<span class="emoji" aria-hidden="true">🛒</span> 장바구니 만들기';
+
+    function totalSteps(){ return slides.length; }
 
     function slideTo(i){
       slides.forEach((el,idx)=> el.classList.toggle('hidden', idx!==i));
       index = i;
       const step = Math.min(index+1, totalSteps());
       stepLabel.textContent = `${step} / ${totalSteps()}`;
-      const pct = Math.min((index)/totalSteps()*100, 100);
+      const pct = Math.min(((index+1)/totalSteps())*100, 100);
       bar.style.width = pct + '%';
       afterSlide();
     }
 
     function afterSlide(){
       prevBtn.disabled = index===0;
-      nextBtn.textContent = (index===totalSteps()-1) ? '요약 보기' : (index>=totalSteps() ? '완료' : '다음');
-      if(index===totalSteps()){
-        prevBtn.disabled = false;
-        nextBtn.classList.add('hidden');
+      const isFinal = index===totalSteps()-1;
+      if(nav){ nav.classList.toggle('final-step', isFinal); }
+      nextBtn.classList.toggle('final-action', isFinal);
+      if(isFinal){
+        nextBtn.innerHTML = FINAL_LABEL_HTML;
+        nextBtn.dataset.originalContent = FINAL_LABEL_HTML;
+        nextBtn.setAttribute('aria-label', '장바구니 만들기');
+        renderSummary();
       } else {
-        nextBtn.classList.remove('hidden');
+        nextBtn.textContent = '다음';
+        nextBtn.setAttribute('aria-label', '다음 질문으로 이동');
+        delete nextBtn.dataset.originalContent;
+        nextBtn.dataset.usesGpt = 'false';
       }
+      nextBtn.classList.remove('hidden');
     }
 
     // Q1: 5인 이상 선택 시 숫자 입력 노출
@@ -410,19 +421,15 @@
       const needDinner = !skipSet.has("저녁");
       GPTUIManager.updateSubmitButtonForGPT(hasFavorites, needDinner);
       
-      document.getElementById('jsonBox').textContent = JSON.stringify(ans, null, 2);
     }
 
-    nextBtn.addEventListener('click', ()=>{
-      if(index < totalSteps()){
-        if(!validateCurrent()) return;
-        if(index === totalSteps()-1){
-          renderSummary();
-          slideTo(totalSteps());
-          return;
-        }
+    nextBtn.addEventListener('click', async ()=>{
+      if(!validateCurrent()) return;
+      if(index < totalSteps()-1){
         slideTo(index+1);
+        return;
       }
+      await handleSubmit();
     });
 
     prevBtn.addEventListener('click', ()=>{
@@ -437,13 +444,6 @@
           nextBtn.click();
         }
       }
-    });
-
-    document.getElementById('copyBtn').addEventListener('click', async ()=>{
-      try{
-        await navigator.clipboard.writeText(document.getElementById('jsonBox').textContent);
-        alert('복사되었습니다.');
-      }catch{ alert('복사에 실패했습니다.'); }
     });
 
     // Real-time favorite menu validation
@@ -1354,35 +1354,52 @@
     
     // UI State Management for GPT Integration
     class GPTUIManager {
-      static showLoading(message = '처리 중...') {
+      static getActionButton(){
+        return document.getElementById('nextBtn');
+      }
+
+      static showLoading(message = '장바구니 생성 중...') {
+        const resultSection = document.getElementById('resultSection');
+        if(resultSection){ resultSection.classList.remove('hidden'); }
+
+        const header = document.getElementById('resultHeader');
+        if(header){ header.classList.add('hidden'); }
+
+        const wrap = document.getElementById('resultWrap');
+        if(wrap){ wrap.classList.add('hidden'); }
+
         const indicator = document.getElementById('loadingIndicator');
         const text = document.getElementById('loadingText');
-        const submitBtn = document.getElementById('submitBtn');
-        
+
         if (indicator) {
           indicator.classList.remove('hidden');
           if (text) text.textContent = message;
         }
-        
-        if (submitBtn) {
-          submitBtn.disabled = true;
-          submitBtn.textContent = '처리 중...';
+
+        const actionBtn = this.getActionButton();
+        if (actionBtn) {
+          if(!actionBtn.dataset.originalContent){
+            actionBtn.dataset.originalContent = actionBtn.innerHTML;
+          }
+          actionBtn.disabled = true;
+          actionBtn.innerHTML = message;
         }
-        
+
         this.hideStatusMessage();
       }
-      
+
       static hideLoading() {
         const indicator = document.getElementById('loadingIndicator');
-        const submitBtn = document.getElementById('submitBtn');
-        
         if (indicator) {
           indicator.classList.add('hidden');
         }
-        
-        if (submitBtn) {
-          submitBtn.disabled = false;
-          submitBtn.textContent = '제출하기';
+
+        const actionBtn = this.getActionButton();
+        if (actionBtn) {
+          actionBtn.disabled = false;
+          if(actionBtn.dataset.originalContent){
+            actionBtn.innerHTML = actionBtn.dataset.originalContent;
+          }
         }
       }
       
@@ -1428,14 +1445,23 @@
         }
       }
       
+      static revealResults(){
+        const header = document.getElementById('resultHeader');
+        if(header){ header.classList.remove('hidden'); }
+        const wrap = document.getElementById('resultWrap');
+        if(wrap){ wrap.classList.remove('hidden'); }
+      }
+
       static updateSubmitButtonForGPT(hasFavorites, needDinner) {
-        const submitBtn = document.getElementById('submitBtn');
-        if (!submitBtn) return;
-        
+        const actionBtn = this.getActionButton();
+        if (!actionBtn) return;
+
         if (hasFavorites && needDinner) {
-          submitBtn.innerHTML = '🤖 GPT 메뉴 생성하기';
+          actionBtn.setAttribute('aria-label', '선호 메뉴를 반영해 장바구니 만들기');
+          actionBtn.dataset.usesGpt = 'true';
         } else {
-          submitBtn.innerHTML = '제출하기';
+          actionBtn.setAttribute('aria-label', '장바구니 만들기');
+          actionBtn.dataset.usesGpt = 'false';
         }
       }
     }
@@ -1789,7 +1815,7 @@
   <!-- 장바구니 + 메뉴 생성 -->
   <script>
     // ====== 메뉴 & 장바구니 로직 ======
-    const state = { menus: [], cart: [], removed: [] };
+    const state = { menus: [], cart: [] };
     const keyOf = (i)=> (i.name + '__' + (i.unit||''));
 // 🧩 이름 정규화 매핑표 (MENU_DB ↔ UNIT_MAP 일치용)
 //  - MENU_DB의 재료명 중 판매단위 UNIT_MAP 키와 다른 것들을 모두 매핑
@@ -2120,8 +2146,7 @@ if (supported && typeof window.packCeil === "function") {
       box.appendChild(list);
       box.querySelectorAll('[data-rm-menu]').forEach(btn=> btn.addEventListener('click', e=>{
         const i = Number(e.currentTarget.getAttribute('data-rm-menu'));
-        const removedMenu = state.menus.splice(i,1)[0];
-        state.removed.push({ type:'menu', payload: removedMenu });
+        state.menus.splice(i,1);
         state.cart = mergeCartFromMenus(state.menus);
         drawAll();
       }));
@@ -2265,57 +2290,15 @@ if (supported && typeof window.packCeil === "function") {
   // 제거
   box.querySelectorAll('[data-remove]').forEach(b=> b.addEventListener('click', e=>{
     const i=Number(e.currentTarget.getAttribute('data-remove'));
-    const removed=state.cart.splice(i,1)[0];
-    state.removed.push({type:'item', payload: removed});
+    state.cart.splice(i,1);
     drawAll();
   }));
 }
 
-    function drawRemoved(){
-      const box=document.getElementById('removedBox'); if(!box) return; if(!state.removed.length){ box.textContent=''; return; }
-      box.innerHTML = '제거 내역: ' + state.removed.map((r,idx)=>'<button class="icon-btn" data-restore="'+idx+'">↩️ '+(r.type==='item'? r.payload.name : r.payload.title)+'</button>').join(' ');
-      box.querySelectorAll('[data-restore]').forEach(b=> b.addEventListener('click', e=>{
-        const i=Number(e.currentTarget.getAttribute('data-restore')); const rec=state.removed.splice(i,1)[0];
-        if(rec.type==='item'){
-          const k=keyOf(rec.payload); const idx=state.cart.findIndex(x=> keyOf(x)===k);
-          if(idx>=0) state.cart[idx].qty = Number(state.cart[idx].qty||0) + Number(rec.payload.qty||0);
-          else state.cart.push({...rec.payload});
-        } else if(rec.type==='menu'){
-          state.menus.push(rec.payload); state.cart = mergeCartFromMenus(state.menus);
-        }
-        drawAll();
-      }));
-    }
+  function drawAll(){ renderMenus(); renderCart(); }
 
-    function drawAll(){ renderMenus(); renderCart(); drawRemoved(); }
-
-    // 툴바
-    if(document.getElementById('cartSearch')) document.getElementById('cartSearch').addEventListener('input', ()=> renderCart());
-    if(document.getElementById('clearRemovedBtn')) document.getElementById('clearRemovedBtn').addEventListener('click', ()=>{ state.removed.length=0; drawRemoved(); });
-    if(document.getElementById('restoreAllBtn')) document.getElementById('restoreAllBtn').addEventListener('click', ()=>{
-      const menus=state.removed.filter(r=>r.type==='menu').map(r=>r.payload);
-      const items=state.removed.filter(r=>r.type==='item').map(r=>r.payload);
-      if(menus.length){ state.menus.push(...menus); state.cart=mergeCartFromMenus(state.menus); }
-      for(const it of items){ const k=keyOf(it); const idx=state.cart.findIndex(x=> keyOf(x)===k); if(idx>=0) state.cart[idx].qty = Number(state.cart[idx].qty||0) + Number(it.qty||0); else state.cart.push({...it}); }
-      state.removed.length=0; drawAll();
-    });
-
-    function download(filename, text){
-      const a=document.createElement('a');
-      a.setAttribute('href','data:text/plain;charset=utf-8,'+encodeURIComponent(text));
-      a.setAttribute('download',filename); a.style.display='none';
-      document.body.appendChild(a); a.click(); document.body.removeChild(a);
-    }
-    if(document.getElementById('exportJsonBtn')) document.getElementById('exportJsonBtn').addEventListener('click', ()=>{
-      const payload={menus:state.menus, cart:state.cart};
-      download('bobgonggu_cart.json', JSON.stringify(payload,null,2));
-    });
-    if(document.getElementById('exportCsvBtn')) document.getElementById('exportCsvBtn').addEventListener('click', ()=>{
-      const header=['name','qty','unit','category'];
-      const rows=state.cart.map(i=> [i.name,i.qty,i.unit||'',i.category||'']);
-      const csv = [header.join(','), ...rows.map(r => r.map(x => '"' + String(x).split('"').join('""') + '"').join(','))].join('\n');
-      download('bobgonggu_cart.csv', csv);
-    });
+  // 툴바
+  if(document.getElementById('cartSearch')) document.getElementById('cartSearch').addEventListener('input', ()=> renderCart());
 
     // === Menu Constraint Calculator ===
     class MenuConstraintCalculator {
@@ -2574,64 +2557,61 @@ if (supported && typeof window.packCeil === "function") {
       return enhancedPlan;
     }
 
-    // 제출 버튼 리스너(한 군데만)
-    (function(){
-      const btn = document.getElementById('submitBtn');
-      if(!btn) return;
-      const clone = btn.cloneNode(true);
-      btn.parentNode.replaceChild(clone, btn);
-      clone.addEventListener('click', async ()=>{
-        const ans = (typeof getAnswers==='function') ? getAnswers() : {};
-        
-        // Check if we have favorite menus for GPT integration
-        const hasFavorites = ans?.favoriteMenu && ans.favoriteMenu.length > 0;
-        const skipSet = new Set(ans?.skipMeals || []);
-        const needDinner = !skipSet.has("저녁");
-        
-        // Show appropriate loading message
-        if (hasFavorites && needDinner) {
-          GPTUIManager.showLoading('선호 메뉴 분석 중...');
+    async function handleSubmit(){
+      const ans = (typeof getAnswers==='function') ? getAnswers() : {};
+      renderSummary();
+
+      const hasFavorites = ans?.favoriteMenu && ans.favoriteMenu.length > 0;
+      const skipSet = new Set(ans?.skipMeals || []);
+      const needDinner = !skipSet.has("저녁");
+      const usesGpt = hasFavorites && needDinner;
+
+      GPTUIManager.showLoading('장바구니 생성 중...');
+
+      try{
+        const menus = await simulateBackend(ans);
+        state.menus = menus;
+        state.cart = mergeCartFromMenus(state.menus);
+        drawAll();
+
+        GPTUIManager.hideLoading();
+        GPTUIManager.revealResults();
+
+        const resultSection = document.getElementById('resultSection');
+        if(resultSection){
+          resultSection.classList.remove('hidden');
+          resultSection.scrollIntoView({ behavior:'smooth', block:'start' });
+        }
+
+        const header = document.getElementById('resultHeader');
+        if(header){
+          header.classList.remove('hidden');
+          const title = header.querySelector('h2');
+          if(title){ title.textContent = '✅ 장바구니가 준비되었어요!'; }
+        }
+
+        const gptMenuCount = menus.filter(menu => menu.source === 'gpt').length;
+        const localMenuCount = menus.filter(menu => menu.source === 'local').length;
+
+        let message;
+        let type = 'success';
+
+        if (gptMenuCount > 0) {
+          message = `✅ 장바구니가 준비되었어요! ${gptMenuCount}개의 GPT 맞춤 메뉴와 ${localMenuCount}개의 기본 메뉴를 담았어요.`;
+        } else if (usesGpt) {
+          message = '⚠️ 선호 메뉴를 반영하지 못해 기본 추천 메뉴로 채웠어요.';
+          type = 'warning';
         } else {
-          GPTUIManager.showLoading('메뉴 생성 중...');
+          message = `✅ 장바구니가 준비되었어요! ${localMenuCount}개의 추천 메뉴를 준비했어요.`;
         }
-        
-        try{
-          const menus = await simulateBackend(ans);
-          state.menus = menus; 
-          state.cart = mergeCartFromMenus(state.menus);
-          const wrap = document.getElementById('resultWrap'); 
-          if(wrap) wrap.classList.remove('hidden');
-          drawAll();
-          
-          // Hide loading and provide feedback based on menu sources
-          GPTUIManager.hideLoading();
-          
-          const gptMenuCount = menus.filter(menu => menu.source === 'gpt').length;
-          const localMenuCount = menus.filter(menu => menu.source === 'local').length;
-          
-          if (gptMenuCount > 0) {
-            GPTUIManager.showStatusMessage(
-              `✅ 생성 완료! ${gptMenuCount}개의 GPT 맞춤 메뉴와 ${localMenuCount}개의 기본 메뉴가 생성되었습니다.`, 
-              'success'
-            );
-          } else if (hasFavorites && needDinner) {
-            GPTUIManager.showStatusMessage(
-              '⚠️ GPT 메뉴 생성에 실패하여 기본 추천 메뉴로 대체되었습니다.', 
-              'warning'
-            );
-          } else {
-            GPTUIManager.showStatusMessage(
-              `✅ 메뉴 생성 완료! ${localMenuCount}개의 추천 메뉴가 준비되었습니다.`, 
-              'success'
-            );
-          }
-        }catch(e){ 
-          GPTUIManager.hideLoading();
-          GPTUIManager.showStatusMessage('❌ 메뉴 생성 중 오류가 발생했습니다.', 'error');
-          console.error(e); 
-        }
-      });
-    })();
+
+        GPTUIManager.showStatusMessage(message, type);
+      }catch(e){
+        GPTUIManager.hideLoading();
+        GPTUIManager.showStatusMessage('❌ 메뉴 생성 중 오류가 발생했습니다.', 'error');
+        console.error(e);
+      }
+    }
   </script>
 <script>
 /* === grocery-units.js (browser) === */
