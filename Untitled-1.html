@@ -475,8 +475,8 @@
     const GPT_CONFIG = {
       apiUrl: `${backendBase}/`,
       healthUrl: `${backendBase}/health`,
-      timeout: 15000, // 15 seconds - increased for better reliability
-      maxRetries: 2, // Increased retry attempts
+      timeout: 20000, // 20초 - GPT API 응답 시간 고려
+      maxRetries: 2,
       maxMenus: 3,
       // Circuit breaker configuration
       circuitBreaker: {
@@ -655,6 +655,13 @@
           throw new ValidationError('No valid favorite menus after filtering', favorites);
         }
 
+        console.log('백엔드로 전송할 파라미터:', {
+          favorites: limitedMenus,
+          people: validatedPeople,
+          days: validatedDays,
+          skipMeals: this.normalizeSkipMeals(skipMeals)
+        });
+
         try {
           await this.rateLimiter.checkLimit();
 
@@ -674,14 +681,14 @@
           try {
             menus = this.parseResponse(response, validatedPeople);
           } catch (parseError) {
-            console.warn('Failed to parse backend response, generating local fallback menus.', parseError);
+            console.warn('백엔드 응답 파싱 실패, 로컬 fallback 메뉴 생성', parseError);
             this.requestCount++;
             this.lastRequestTime = Date.now();
             return this.generateFallbackMenusFromFavorites(limitedMenus, validatedPeople);
           }
 
           if (!menus || menus.length === 0) {
-            console.warn('Backend returned no valid menus, generating local fallback menus.');
+            console.warn('백엔드가 유효한 메뉴를 반환하지 않음, 로컬 fallback 메뉴 생성');
             this.requestCount++;
             this.lastRequestTime = Date.now();
             return this.generateFallbackMenusFromFavorites(limitedMenus, validatedPeople);
@@ -690,29 +697,33 @@
           this.requestCount++;
           this.lastRequestTime = Date.now();
 
+          console.log(`GPT API 성공: ${menus.length}개 메뉴 생성`);
           return menus;
 
         } catch (error) {
-          console.error('Backend API Error in generateMenus:', error);
+          console.error('백엔드 API 오류:', error);
 
           if (error instanceof NetworkError) {
-            console.warn('Network error encountered, generating local fallback menus.');
+            console.warn('네트워크 오류, 로컬 fallback 메뉴 생성');
             this.requestCount++;
             this.lastRequestTime = Date.now();
             return this.generateFallbackMenusFromFavorites(limitedMenus, validatedPeople);
           }
 
-          if (error instanceof APIError || error instanceof ValidationError || error instanceof NetworkError) {
+          if (error instanceof APIError || error instanceof ValidationError) {
             throw error;
           }
 
-          throw new APIError(`Unexpected error in menu generation: ${error.message}`, 0, error);
+          throw new APIError(`메뉴 생성 중 예상치 못한 오류: ${error.message}`, 0, error);
         }
       }
 
       async makeApiCall(payload) {
         return await GPTErrorHandler.withTimeout(async (signal) => {
           try {
+            console.log('백엔드 API 호출 시작:', GPT_CONFIG.apiUrl);
+            console.log('페이로드:', payload);
+
             const response = await fetch(GPT_CONFIG.apiUrl, {
               method: 'POST',
               headers: {
@@ -721,6 +732,8 @@
               body: JSON.stringify(payload),
               signal
             });
+
+            console.log('백엔드 응답 상태:', response.status);
 
             if (!response.ok) {
               let errorData = {};
@@ -732,10 +745,11 @@
                   errorData = await response.json();
                   errorMessage = errorData.error || errorData.message || errorMessage;
                 } else {
-                  errorMessage = `${errorMessage}: ${response.statusText}`;
+                  const textError = await response.text();
+                  errorMessage = textError || `${errorMessage}: ${response.statusText}`;
                 }
               } catch (parseError) {
-                console.warn('Failed to parse backend error response:', parseError);
+                console.warn('백엔드 오류 응답 파싱 실패:', parseError);
               }
 
               throw new APIError(errorMessage, response.status, errorData);
@@ -743,10 +757,12 @@
 
             const contentType = response.headers.get('content-type');
             if (!contentType || !contentType.includes('application/json')) {
-              throw new ValidationError('Invalid response content type', { contentType });
+              throw new ValidationError('잘못된 응답 Content-Type', { contentType });
             }
 
-            return await response.json();
+            const result = await response.json();
+            console.log('백엔드 응답 데이터:', result);
+            return result;
 
           } catch (error) {
             if (error instanceof APIError || error instanceof ValidationError) {
@@ -754,14 +770,14 @@
             }
 
             if (error.name === 'TypeError' && error.message.includes('fetch')) {
-              throw new NetworkError('Network connection failed', error);
+              throw new NetworkError('네트워크 연결 실패', error);
             }
 
             if (error.name === 'SyntaxError') {
-              throw new ValidationError('Invalid JSON response', error);
+              throw new ValidationError('잘못된 JSON 응답', error);
             }
 
-            throw new NetworkError(`Network error: ${error.message}`, error);
+            throw new NetworkError(`네트워크 오류: ${error.message}`, error);
           }
         }, GPT_CONFIG.timeout);
       }
@@ -769,11 +785,11 @@
       parseResponse(apiResponse, people = 2) {
         try {
           if (!apiResponse || typeof apiResponse !== 'object') {
-            throw new ValidationError('Invalid response format: not an object', apiResponse);
+            throw new ValidationError('응답이 객체가 아님', apiResponse);
           }
 
           if (!Array.isArray(apiResponse.menus)) {
-            throw new ValidationError('Response missing menus array', apiResponse);
+            throw new ValidationError('응답에 menus 배열이 없음', apiResponse);
           }
 
           const normalizedMenus = [];
@@ -784,20 +800,20 @@
                 normalizedMenus.push(normalizedMenu);
               }
             } catch (menuError) {
-              console.warn(`Skipping invalid backend menu at index ${index}:`, menuError);
+              console.warn(`메뉴 ${index} 정규화 실패, 건너뜀:`, menuError);
             }
           });
 
           return normalizedMenus;
 
         } catch (error) {
-          console.error('Response parsing error:', error);
+          console.error('응답 파싱 오류:', error);
 
           if (error instanceof ValidationError) {
             throw error;
           }
 
-          throw new ValidationError(`Failed to parse backend response: ${error.message}`, apiResponse);
+          throw new ValidationError(`백엔드 응답 파싱 실패: ${error.message}`, apiResponse);
         }
       }
 
@@ -805,6 +821,8 @@
         if (!Array.isArray(favorites) || favorites.length === 0) {
           return [];
         }
+
+        console.log(`로컬 fallback 메뉴 생성: ${favorites.length}개`);
 
         return favorites.map((rawName, index) => {
           const name = (rawName && typeof rawName === 'string') ? rawName.trim() : '';
@@ -835,40 +853,43 @@
 
       normalizeBackendMenu(menu, people) {
         if (!menu || typeof menu !== 'object') {
-          throw new ValidationError('Menu is not an object', menu);
+          throw new ValidationError('메뉴가 객체가 아님', menu);
         }
 
         const name = typeof menu.name === 'string' ? menu.name.trim() : '';
         if (!name) {
-          throw new ValidationError('Menu missing name', menu);
+          throw new ValidationError('메뉴 이름 없음', menu);
         }
 
         const cookingTime = this.validateAndNormalizeNumber(menu.time, 'time', 1, 240, 30);
 
         const ingredients = Array.isArray(menu.ingredients) ? menu.ingredients : [];
         if (ingredients.length === 0) {
-          throw new ValidationError(`Menu "${name}" has no ingredients`, menu);
+          throw new ValidationError(`메뉴 "${name}"에 재료가 없음`, menu);
         }
 
-        const normalizedIngredients = ingredients.map((ingredient, index) => this.normalizeIngredient(ingredient, index, people));
+        const normalizedIngredients = ingredients.map((ingredient, index) => 
+          this.normalizeIngredient(ingredient, index, people)
+        );
 
         return {
           name,
           servings: people,
           cookingTime,
           ingredients: normalizedIngredients,
-          source: menu.source || 'gpt'
+          source: 'gpt',
+          origin: 'gpt'
         };
       }
 
       normalizeIngredient(ingredient, index, people) {
         if (!ingredient || typeof ingredient !== 'object') {
-          throw new ValidationError(`Ingredient at index ${index} is not an object`, ingredient);
+          throw new ValidationError(`재료 ${index}가 객체가 아님`, ingredient);
         }
 
         const name = typeof ingredient.name === 'string' ? ingredient.name.trim() : '';
         if (!name) {
-          throw new ValidationError(`Ingredient at index ${index} missing name`, ingredient);
+          throw new ValidationError(`재료 ${index}에 이름이 없음`, ingredient);
         }
 
         const qtyPerServing = this.validateAndNormalizeNumber(ingredient.qty, 'qty', 0, 10000, 0);
@@ -890,17 +911,17 @@
 
         const num = Number(value);
         if (!Number.isFinite(num)) {
-          console.warn(`Invalid ${fieldName} value "${value}", using default ${defaultValue}`);
+          console.warn(`잘못된 ${fieldName} 값 "${value}", 기본값 ${defaultValue} 사용`);
           return defaultValue;
         }
 
         if (num < min) {
-          console.warn(`${fieldName} value ${num} below minimum ${min}, using minimum`);
+          console.warn(`${fieldName} 값 ${num}이 최소값 ${min}보다 작음, 최소값 사용`);
           return min;
         }
 
         if (num > max) {
-          console.warn(`${fieldName} value ${num} above maximum ${max}, using maximum`);
+          console.warn(`${fieldName} 값 ${num}이 최대값 ${max}보다 큼, 최대값 사용`);
           return max;
         }
 
@@ -914,7 +935,7 @@
         if (circuitState.state === 'OPEN') {
           const status = {
             available: false,
-            reason: `Circuit breaker is open (${circuitState.failureCount} recent failures)`,
+            reason: `Circuit breaker가 열림 (최근 ${circuitState.failureCount}회 실패)`,
             canRetry: false,
             retryAfter: circuitState.timeUntilReset
           };
@@ -925,7 +946,7 @@
         if (rateLimitStatus.remainingRequests === 0) {
           const status = {
             available: false,
-            reason: 'Rate limit exceeded',
+            reason: 'Rate limit 초과',
             canRetry: true,
             retryAfter: rateLimitStatus.windowMs
           };
@@ -942,7 +963,7 @@
           const ok = response.ok;
           const status = {
             available: ok,
-            reason: ok ? 'Healthy' : `HTTP ${response.status}`,
+            reason: ok ? '정상' : `HTTP ${response.status}`,
             canRetry: !ok,
             status: response.status
           };
@@ -952,7 +973,7 @@
         } catch (error) {
           const status = {
             available: false,
-            reason: `Health check failed: ${error.message}`,
+            reason: `Health check 실패: ${error.message}`,
             canRetry: true,
             status: null
           };
