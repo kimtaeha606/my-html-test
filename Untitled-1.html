@@ -235,7 +235,7 @@
         <textarea id="fav" rows="4" placeholder="예) 김치볶음밥, 제육볶음, 닭가슴살 샐러드"></textarea>
         <div class="small" style="margin-top:8px">콤마(,)로 구분해 여러 개 입력하셔도 좋아요.</div>
         <div id="favoriteTruncationNotice" class="truncation-notice hidden">
-          ⚠️ 선호 메뉴가 3개를 초과하여 처음 3개만 GPT API로 전송됩니다.
+          ⚠️ 선호 메뉴가 3개를 초과하여 처음 3개만 추천 엔진으로 전송됩니다.
         </div>
       </article>
 
@@ -402,7 +402,7 @@
         const summary = MenuConstraintCalculator.getConstraintSummary(constraints);
         
         const li5 = document.createElement('li');
-        li5.innerHTML = `<strong>GPT 메뉴 계획:</strong> 저녁 슬롯 ${summary.dinnerSlots}개, 최대 GPT 메뉴 ${summary.maxGPTMenus}개`;
+        li5.innerHTML = `<strong>맞춤 메뉴 계획:</strong> 저녁 슬롯 ${summary.dinnerSlots}개, 최대 맞춤 메뉴 ${summary.maxGPTMenus}개`;
         
         if (summary.warnings.length > 0) {
           const li6 = document.createElement('li');
@@ -1037,7 +1037,7 @@
       static handle(error, fallbackCallback = null) {
         console.error('GPT Backend Error:', error);
 
-        let userMessage = 'GPT 백엔드 오류가 발생했습니다.';
+        let userMessage = '추천 서비스에 문제가 발생했습니다.';
         let messageType = 'error';
         let shouldFallback = true;
         let retryable = false;
@@ -1078,7 +1078,7 @@
             case 502:
             case 503:
             case 504:
-              userMessage = 'GPT 서비스에 일시적인 문제가 있습니다. 로컬 메뉴를 사용합니다.';
+              userMessage = '추천 서비스에 일시적인 문제가 있습니다. 로컬 메뉴를 사용합니다.';
               messageType = 'warning';
               shouldFallback = true;
               retryable = true;
@@ -1095,12 +1095,12 @@
           shouldFallback = true;
           retryable = true;
         } else if (error instanceof ValidationError) {
-          userMessage = 'GPT 응답 데이터가 올바르지 않습니다. 로컬 메뉴를 사용합니다.';
+          userMessage = '추천 서비스 응답 데이터가 올바르지 않습니다. 로컬 메뉴를 사용합니다.';
           messageType = 'warning';
           shouldFallback = true;
           retryable = false;
         } else if (error.message.includes('API key not configured')) {
-          userMessage = 'GPT 백엔드 설정이 올바르지 않습니다. 로컬 메뉴를 사용합니다.';
+          userMessage = '추천 서비스 설정이 올바르지 않습니다. 로컬 메뉴를 사용합니다.';
           messageType = 'info';
           shouldFallback = true;
           retryable = false;
@@ -1317,7 +1317,7 @@
         if (!noticeEl) return;
         
         if (originalCount > limitCount) {
-          noticeEl.textContent = `⚠️ 선호 메뉴가 ${originalCount}개 입력되었지만, GPT 백엔드 제한으로 처음 ${limitCount}개만 사용됩니다.`;
+          noticeEl.textContent = `⚠️ 선호 메뉴가 ${originalCount}개 입력되었지만, 추천 엔진 제한으로 처음 ${limitCount}개만 사용됩니다.`;
           noticeEl.classList.remove('hidden');
         } else {
           noticeEl.classList.add('hidden');
@@ -1362,7 +1362,7 @@
           if (!healthCheck.available) {
             console.log('GPT backend not available:', healthCheck.reason);
             GPTUIManager.showStatusMessage(
-              `GPT 백엔드 사용 불가: ${healthCheck.reason}. 로컬 메뉴를 사용합니다.`,
+              `추천 서비스 사용 불가: ${healthCheck.reason}. 로컬 메뉴를 사용합니다.`,
               'info'
             );
             return await fallbackOperation();
@@ -1373,7 +1373,7 @@
           const result = await operation();
           
           // Success - show positive feedback
-          GPTUIManager.showStatusMessage('GPT 메뉴 생성 성공!', 'success');
+          GPTUIManager.showStatusMessage('맞춤 메뉴 생성이 완료되었습니다!', 'success');
           return result;
           
         } catch (error) {
@@ -1419,14 +1419,14 @@
 
         if (gptStatus.circuitBreaker.state === 'OPEN') {
           const waitTime = Math.ceil(gptStatus.circuitBreaker.timeUntilReset / 1000 / 60);
-          return `GPT API temporarily disabled. Will retry in ${waitTime} minutes.`;
+          return `Recommendation service temporarily unavailable. Will retry in ${waitTime} minutes.`;
         }
         
         if (gptStatus.rateLimit.remainingRequests === 0) {
           return 'Rate limit reached. Please wait before making more requests.';
         }
         
-        return 'GPT API is available and ready to use';
+        return 'Recommendation service is available and ready to use';
       }
     }
 
@@ -1441,19 +1441,19 @@
       const backendHealth = status.gpt.backend?.health || {};
 
       if (status.gpt.circuitBreaker.state === 'OPEN') {
-        message = `🔴 GPT API 일시 중단 (${status.gpt.circuitBreaker.failureCount}회 실패)`;
+        message = `🔴 추천 서비스가 일시 중단되었습니다 (${status.gpt.circuitBreaker.failureCount}회 실패)`;
         type = 'error';
       } else if (status.gpt.rateLimit.remainingRequests === 0) {
         message = '⏳ API 요청 한도 도달, 잠시 후 다시 시도해주세요';
         type = 'warning';
       } else if (backendHealth.available === false) {
-        message = `⚙️ GPT 백엔드 오류: ${backendHealth.reason || '사용 불가'}, 로컬 메뉴 사용`;
+        message = `⚙️ 추천 서비스 오류: ${backendHealth.reason || '사용 불가'}, 로컬 메뉴 사용`;
         type = 'info';
       } else if (backendHealth.available === null) {
-        message = 'ℹ️ GPT 백엔드 상태 확인 중입니다.';
+        message = 'ℹ️ 추천 서비스 상태 확인 중입니다.';
         type = 'info';
       } else {
-        message = `✅ GPT API 사용 가능 (남은 요청: ${status.gpt.rateLimit.remainingRequests})`;
+        message = `✅ 추천 서비스 사용 가능 (남은 요청: ${status.gpt.rateLimit.remainingRequests})`;
         type = 'success';
       }
       
@@ -2024,7 +2024,7 @@ if (supported && typeof window.packCeil === "function") {
         
         // Create source badge
         const sourceBadge = m.source === 'gpt' 
-          ? '<span class="menu-source-badge menu-source-gpt">🤖 GPT</span>'
+          ? '<span class="menu-source-badge menu-source-gpt">🤖 맞춤</span>'
           : '<span class="menu-source-badge menu-source-local">📚 기본</span>';
         
         row.innerHTML =
@@ -2254,7 +2254,7 @@ if (supported && typeof window.packCeil === "function") {
 
         // Check if dinner is completely skipped
         if (dinnerSlots === 0) {
-          validation.warnings.push('No dinner slots available - GPT menus will not be generated');
+          validation.warnings.push('No dinner slots available - 맞춤 메뉴가 생성되지 않습니다');
         }
 
         // Validate favorite menus
@@ -2271,7 +2271,7 @@ if (supported && typeof window.packCeil === "function") {
 
         // Check if favorite menus exceed limit
         if (favoriteCount > 3) {
-          validation.warnings.push(`Only first 3 favorite menus will be sent to GPT API (provided: ${favoriteCount})`);
+          validation.warnings.push(`Only first 3 favorite menus will be sent to the recommendation engine (provided: ${favoriteCount})`);
         }
 
         // Check if available slots limit menu generation
@@ -2358,7 +2358,7 @@ if (supported && typeof window.packCeil === "function") {
           );
         } else {
           console.log('No dinner slots available for GPT menus, using local database only');
-          GPTUIManager.showStatusMessage('저녁 슬롯이 없어 GPT 메뉴를 적용할 수 없습니다.', 'info');
+          GPTUIManager.showStatusMessage('저녁 슬롯이 없어 맞춤 메뉴를 적용할 수 없습니다.', 'info');
         }
       } else if (favs && favs.length > 0 && !needDinner) {
         console.log('Favorite menus provided but dinner is skipped, using local database only');
@@ -2499,10 +2499,10 @@ if (supported && typeof window.packCeil === "function") {
         let type = 'success';
 
         if (gptFallbackCount > 0) {
-          message = `ℹ️ 장바구니가 준비되었어요! GPT 백엔드 응답이 없어 선호 메뉴 ${gptFallbackCount}개를 로컬에서 구성했어요. ${localMenuCount}개의 기본 메뉴도 함께 담았어요.`;
+          message = `ℹ️ 장바구니가 준비되었어요! 서버 응답이 지연되어 선호 메뉴 ${gptFallbackCount}개를 로컬에서 구성했어요. ${localMenuCount}개의 기본 메뉴도 함께 담았어요.`;
           type = 'info';
         } else if (gptMenuCount > 0) {
-          message = `✅ 장바구니가 준비되었어요! ${gptMenuCount}개의 GPT 맞춤 메뉴와 ${localMenuCount}개의 기본 메뉴를 담았어요.`;
+          message = `✅ 장바구니가 준비되었어요! ${gptMenuCount}개의 맞춤 메뉴와 ${localMenuCount}개의 기본 메뉴를 담았어요.`;
         } else if (usesGpt) {
           message = '⚠️ 선호 메뉴를 반영하지 못해 기본 추천 메뉴로 채웠어요.';
           type = 'warning';
