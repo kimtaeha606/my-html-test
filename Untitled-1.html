@@ -2262,14 +2262,9 @@ if (supported && typeof window.packCeil === "function") {
   const imgHTML = img ? `<img src="${img}" alt="${it.name}" class="thumb" loading="lazy">` : '';
 
   const priceInfo = calcItemPrice(it.name, it.unit, it.qty);
-  const hasEstimate = !priceInfo.ok && typeof it.estimatedPrice === 'number' && Number.isFinite(it.estimatedPrice);
-  const hasUnitEstimate = typeof it.estimatedUnitPrice === 'number' && Number.isFinite(it.estimatedUnitPrice);
-
   const priceHTML = priceInfo.ok
     ? `<div><strong>${KRW.format(priceInfo.subtotal)}</strong><div class="small muted">${priceInfo.packs}팩 × ${KRW.format(priceInfo.unitPrice)}</div></div>`
-    : hasEstimate
-      ? `<div><strong>${KRW.format(it.estimatedPrice)}</strong><div class="small muted">GPT 추정가${hasUnitEstimate ? ` · ${KRW.format(it.estimatedUnitPrice)} / ${it.unit || ''}` : ''}</div></div>`
-      : `<div class="small muted">가격정보 없음</div>`;
+    : `<div class="small muted">가격정보 없음</div>`;
 
   const row=document.createElement('div'); row.className='tr';
   row.style.gridTemplateColumns='1.2fr .8fr .6fr .8fr auto';
