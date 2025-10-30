@@ -52,6 +52,9 @@
     .btn[disabled]{opacity:.5;cursor:not-allowed}
     .btn.fill{background:var(--carrot);border-color:var(--carrot);color:#fff}
 
+    .order-actions{display:flex;justify-content:flex-end;margin-top:24px}
+    .order-actions .btn{min-width:180px}
+
     .pill{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--border);background:#fff;border-radius:999px;padding:8px 12px}
 
     textarea, input[type="text"], select, input[type="number"]{
@@ -274,6 +277,12 @@
           <input id="cartSearch" type="text" placeholder="재료 검색(예: 대파, 돼지고기)" style="max-width:260px"/>
         </div>
         <div id="cartBox"></div>
+        <div id="orderActions" class="order-actions hidden">
+          <button id="orderBtn" class="btn fill" type="button">
+            <span aria-hidden="true">🛍️</span>
+            <span>주문하기</span>
+          </button>
+        </div>
       </div>
     </section>
   </main>
@@ -435,6 +444,13 @@
     prevBtn.addEventListener('click', ()=>{
       if(index>0){ slideTo(index-1); }
     });
+
+    const orderBtn = document.getElementById('orderBtn');
+    if(orderBtn){
+      orderBtn.addEventListener('click', ()=>{
+        alert('주문 페이지로 이동합니다! 잠시만 기다려주세요.');
+      });
+    }
 
     document.addEventListener('keydown', (e)=>{
       if(e.key==='Enter'){
@@ -1351,6 +1367,9 @@
         const wrap = document.getElementById('resultWrap');
         if(wrap){ wrap.classList.add('hidden'); }
 
+        const orderActions = document.getElementById('orderActions');
+        if(orderActions){ orderActions.classList.add('hidden'); }
+
         const indicator = document.getElementById('loadingIndicator');
         const text = document.getElementById('loadingText');
 
@@ -1433,6 +1452,8 @@
         if(header){ header.classList.remove('hidden'); }
         const wrap = document.getElementById('resultWrap');
         if(wrap){ wrap.classList.remove('hidden'); }
+        const orderActions = document.getElementById('orderActions');
+        if(orderActions){ orderActions.classList.remove('hidden'); }
       }
 
       static updateSubmitButtonForGPT(hasFavorites, needDinner) {
